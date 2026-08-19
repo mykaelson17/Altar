@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/cadastros")({
 function Page() {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const isTrueAdmin = ["master", "admin"].includes(user?.role ?? "");
   const canManage = ["master", "admin", "coordenador"].includes(user?.role ?? "");
 
   const { data: cargos = [], isLoading: loadingCargos } = useQuery({ queryKey: ["cargos"], queryFn: () => listCargos() });
@@ -100,7 +101,11 @@ function Page() {
           <TabsTrigger value="eventos" className="justify-start px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Ticket className="size-4 mr-2 shrink-0" /> Eventos
           </TabsTrigger>
-          <TabsTrigger value="financeiro" className="justify-start px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"><Wallet className="size-4 mr-2 shrink-0" /> Financeiro</TabsTrigger>
+          {isTrueAdmin && (
+            <TabsTrigger value="financeiro" className="justify-start px-3 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+              <Wallet className="size-4 mr-2 shrink-0" /> Financeiro
+            </TabsTrigger>
+          )}
         </TabsList>
         
         <div className="flex-1 min-w-0">
@@ -194,9 +199,11 @@ function Page() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="financeiro" className="mt-0">
-            <PlanoContasTab isAdmin={canManage} />
-          </TabsContent>
+          {isTrueAdmin && (
+            <TabsContent value="financeiro" className="mt-0">
+              <PlanoContasTab isAdmin={isTrueAdmin} />
+            </TabsContent>
+          )}
         </div>
       </Tabs>
     </div>
