@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, ClipboardCheck, Pencil, ChevronLeft, CalendarIcon, CheckSquare } from "lucide-react";
 import {
-  getTurmaDetail, addAluno, removeAluno, getFrequenciaDoDia, salvarFrequencia, getFrequenciaHistorico, updateTurma, copiarAlunosTrimestreAnterior
+  getTurmaDetail, addAluno, removeAluno, getFrequenciaDoDia, salvarFrequencia, getFrequenciaHistorico, updateTurma, copiarAlunosTrimestreAnterior, listMembrosDisponiveis, addAlunosBatch
 } from "@/lib/ebd.functions";
 import { searchParticipants } from "@/lib/registrations.functions";
 import { listCultos } from "@/lib/cultos.functions";
@@ -20,6 +20,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/ebd/$id")({
   head: () => ({ meta: [{ title: "Turma EBD" }] }),
@@ -244,6 +246,7 @@ function Page() {
             <Button size="icon" className="shrink-0" onClick={() => addMut.mutate()} disabled={!selected || addMut.isPending}>
               <Plus className="size-4" />
             </Button>
+            <BatchEnrollModal turmaId={id} ano={ano} trimestre={trimestre} onSaved={invalidate} />
           </div>
           <div className="border rounded-md divide-y">
             {alunos.map((a: any) => (
@@ -356,5 +359,114 @@ function TurmaHeader({ turma, onSaved, ano, setAno, trimestre, setTrimestre }: {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function BatchEnrollModal({ turmaId, ano, trimestre, onSaved }: { turmaId: string, ano: number, trimestre: number, onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [idadeMin, setIdadeMin] = useState<number | "">("");
+  const [idadeMax, setIdadeMax] = useState<number | "">("");
+  const [depFiltro, setDepFiltro] = useState<string>("__todos");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const { data: membros = [], isLoading } = useQuery({
+    queryKey: ["membros-ebd-disponiveis"],
+    queryFn: () => listMembrosDisponiveis(),
+    enabled: open
+  });
+
+  const departamentos = Array.from(new Set(membros.map((m: any) => m.departamento).filter(Boolean))) as string[];
+
+  const filtered = membros.filter((m: any) => {
+    if (idadeMin !== "" && m.idade !== null && m.idade < idadeMin) return false;
+    if (idadeMax !== "" && m.idade !== null && m.idade > idadeMax) return false;
+    if (depFiltro !== "__todos" && m.departamento !== depFiltro) return false;
+    return true;
+  });
+
+  const toggleAll = () => {
+    if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map((m: any) => m.id)));
+  };
+
+  const toggleOne = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const saveMut = useMutation({
+    mutationFn: () => addAlunosBatch({ data: { turma_id: turmaId, participant_ids: Array.from(selectedIds), ano, trimestre } }),
+    onSuccess: (data) => {
+      toast.success(`${data.count} alunos matriculados`);
+      setOpen(false);
+      setSelectedIds(new Set());
+      onSaved();
+    },
+    onError: (e: any) => toast.error(e.message)
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="ml-2"><CheckSquare className="size-4 mr-2" /> Adicionar vários</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Adicionar Múltiplos Alunos</DialogTitle>
+          <DialogDescription>Filtre os membros da congregação e selecione quem deseja matricular.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-3 gap-3 py-4 shrink-0">
+          <div>
+            <Label className="text-xs">Departamento</Label>
+            <Select value={depFiltro} onValueChange={setDepFiltro}>
+              <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__todos">Todos</SelectItem>
+                {departamentos.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Idade mínima</Label>
+            <Input type="number" value={idadeMin} onChange={e => setIdadeMin(e.target.value === "" ? "" : Number(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Idade máxima</Label>
+            <Input type="number" value={idadeMax} onChange={e => setIdadeMax(e.target.value === "" ? "" : Number(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 border rounded-md flex flex-col">
+          <div className="flex items-center gap-2 p-2 border-b bg-muted/20 shrink-0">
+            <Checkbox checked={filtered.length > 0 && selectedIds.size === filtered.length} onCheckedChange={toggleAll} />
+            <span className="text-sm font-medium">Selecionar todos os {filtered.length} filtrados</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {isLoading ? <p className="text-sm text-center py-4">Carregando...</p> : (
+              <div className="grid sm:grid-cols-2 gap-2">
+                {filtered.map((m: any) => (
+                  <label key={m.id} className="flex items-center gap-2 text-sm py-1.5 px-2 hover:bg-muted/50 rounded-md cursor-pointer border border-transparent hover:border-border">
+                    <Checkbox checked={selectedIds.has(m.id)} onCheckedChange={() => toggleOne(m.id)} />
+                    <span className="truncate flex-1">{m.nome}</span>
+                    {m.idade !== null && <span className="text-xs text-muted-foreground">{m.idade}a</span>}
+                  </label>
+                ))}
+                {filtered.length === 0 && <p className="col-span-2 text-sm text-muted-foreground text-center py-4">Nenhum membro encontrado neste filtro.</p>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-4 shrink-0 gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button disabled={selectedIds.size === 0 || saveMut.isPending} onClick={() => saveMut.mutate()}>
+            Matricular {selectedIds.size} selecionados
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -137,6 +137,45 @@ export const removeAluno = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const addAlunosBatch = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) => z.object({ 
+    turma_id: z.string().min(1), 
+    participant_ids: z.array(z.string().min(1)), 
+    ano: z.number().int().optional(), 
+    trimestre: z.number().int().optional() 
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    if (data.participant_ids.length === 0) return { ok: true, count: 0 };
+    await verificarTurmaNoEscopo(data.turma_id, scopeCongregation(context.auth));
+    const ano = data.ano ?? new Date().getFullYear();
+    const trimestre = data.trimestre ?? Math.floor(new Date().getMonth() / 3) + 1;
+
+    let count = 0;
+    for (const pid of data.participant_ids) {
+      const existing = await q1(`SELECT id FROM ebd_alunos WHERE turma_id = $1 AND participant_id = $2 AND ano = $3 AND trimestre = $4`, [data.turma_id, pid, ano, trimestre]);
+      if (!existing) {
+        await q1(`INSERT INTO ebd_alunos (turma_id, participant_id, ano, trimestre) VALUES ($1,$2,$3,$4)`, [data.turma_id, pid, ano, trimestre]);
+        count++;
+      }
+    }
+    return { ok: true, count };
+  });
+
+export const listMembrosDisponiveis = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const congId = scopeCongregation(context.auth);
+    const sql = `
+      SELECT id, nome, email, foto_url, data_nascimento, departamento, cargo,
+             CAST((strftime('%Y', 'now') - strftime('%Y', data_nascimento)) - (strftime('%m-%d', 'now') < strftime('%m-%d', data_nascimento)) AS INTEGER) as idade
+        FROM participants
+       WHERE ativo = 1 ${congId ? "AND congregation_id = $1" : ""}
+       ORDER BY nome ASC
+    `;
+    return await q<any>(sql, congId ? [congId] : []);
+  });
+
 export const copiarAlunosTrimestreAnterior = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ turma_id: z.string().min(1), ano: z.number().int(), trimestre: z.number().int() }).parse(d))
