@@ -90,15 +90,36 @@ function CongregacaoView() {
 
       {data && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Pendente de envio — {MESES[mes - 1]}/{ano}</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
+              <span>{data.prestacaoStatus ? `Prestação de Contas — ${MESES[mes - 1]}/${ano}` : `Pendente de envio — ${MESES[mes - 1]}/${ano}`}</span>
+              {data.prestacaoStatus && (
+                <Badge 
+                  variant={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "default" : data.prestacaoStatus === "PENDENCIA" ? "destructive" : "secondary"}
+                  className={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                >
+                  {data.prestacaoStatus === "PENDENCIA" ? "Aguardando Correção" : data.prestacaoStatus === "APROVADA" ? "Contas Fechadas" : data.prestacaoStatus.replace("_", " ")}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
+            {data.prestacaoStatus === "PENDENCIA" && data.observacoesSede && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 text-sm flex items-start gap-2">
+                <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                <div>
+                  <strong>Correção solicitada pela sede:</strong> {data.observacoesSede}
+                </div>
+              </div>
+            )}
+            
             <div className="grid grid-cols-3 gap-4 text-center">
               <div><div className="text-xs text-muted-foreground">Entradas</div><div className="text-lg font-semibold text-green-600">{fmtBRL(data.totalEntradas)}</div></div>
               <div><div className="text-xs text-muted-foreground">Saídas</div><div className="text-lg font-semibold text-red-600">{fmtBRL(data.totalSaidas)}</div></div>
               <div><div className="text-xs text-muted-foreground">Saldo</div><div className="text-lg font-semibold">{fmtBRL(data.saldo)}</div></div>
             </div>
 
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-2">
               {data.transactions.map((t: any) => (
                 <div key={t.id} className="flex justify-between text-sm border-b pb-1">
                   <span>{t.categoria} {t.descricao && `— ${t.descricao}`}</span>
@@ -108,18 +129,19 @@ function CongregacaoView() {
                 </div>
               ))}
               {data.transactions.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhum lançamento pendente de envio nesse período.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum lançamento registrado nesse período.</p>
               )}
             </div>
 
-            {data.transactions.length > 0 && (
+            {data.pendentesCount > 0 && (
               canEditFinance ? (
                 <Button
                   className="w-full"
-                  onClick={() => { if (confirm(`Enviar ${data.transactions.length} lançamento(s) pra sede? Depois de enviados, eles não podem mais ser removidos.`)) sendMut.mutate(); }}
+                  onClick={() => { if (confirm(`Enviar ${data.pendentesCount} lançamento(s) pendente(s) pra sede? Depois de enviados, eles não podem mais ser removidos.`)) sendMut.mutate(); }}
                   disabled={sendMut.isPending}
                 >
-                  <Send className="size-4 mr-2" /> Enviar prestação de contas
+                  <Send className="size-4 mr-2" /> 
+                  {data.prestacaoStatus ? `Enviar ${data.pendentesCount} lançamentos pendentes/novos` : "Enviar prestação de contas"}
                 </Button>
               ) : (
                 <p className="text-xs text-muted-foreground text-center">

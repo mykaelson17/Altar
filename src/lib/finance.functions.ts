@@ -353,15 +353,31 @@ export const getPendingAccountability = createServerFn({ method: "GET" })
     if (!congId) throw new Error("Só uma congregação específica pode enviar prestação de contas (a sede recebe, não envia).");
 
     const mm = String(data.mes).padStart(2, "0");
+    const prestacao = await q1<any>(
+      `SELECT status, observacoes_sede FROM prestacoes_contas WHERE congregation_id = $1 AND mes = $2 AND ano = $3 ORDER BY enviado_em DESC LIMIT 1`,
+      [congId, data.mes, data.ano]
+    );
+
+    // If there's an active accountability or not, we fetch all transactions of the month
     const rows = await q<FinanceTransaction>(
       `SELECT * FROM finance_transactions
-        WHERE congregation_id = $1 AND strftime('%Y-%m', data) = $2 AND prestacao_conta_id IS NULL
+        WHERE congregation_id = $1 AND strftime('%Y-%m', data) = $2
         ORDER BY data`,
       [congId, `${data.ano}-${mm}`],
     );
+    const pendentesCount = rows.filter((r) => r.prestacao_conta_id === null).length;
     const totalEntradas = rows.filter((r) => r.tipo === "ENTRADA").reduce((s, r) => s + r.valor, 0);
     const totalSaidas = rows.filter((r) => r.tipo === "SAIDA").reduce((s, r) => s + r.valor, 0);
-    return { transactions: rows, totalEntradas, totalSaidas, saldo: totalEntradas - totalSaidas };
+
+    return { 
+      transactions: rows, 
+      totalEntradas, 
+      totalSaidas, 
+      saldo: totalEntradas - totalSaidas,
+      prestacaoStatus: prestacao?.status || null,
+      observacoesSede: prestacao?.observacoes_sede || null,
+      pendentesCount
+    };
   });
 
 export const sendAccountability = createServerFn({ method: "POST" })
