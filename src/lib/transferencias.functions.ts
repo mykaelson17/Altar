@@ -26,7 +26,7 @@ export const listTransferencias = createServerFn({ method: "GET" })
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    return q(
+    return await q(
       `SELECT t.*, co.nome AS origem_nome, cd.nome AS destino_nome, u.full_name AS criado_por_nome
          FROM transferencias t
          JOIN congregations co ON co.id = t.origem_congregation_id
@@ -81,7 +81,7 @@ export const deleteTransferencia = createServerFn({ method: "POST" })
 export const getSaldoTransferenciasPorCongregacao = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q<{ congregation_id: string; recebidas: number; enviadas: number }>(
+    return await q<{ congregation_id: string; recebidas: number; enviadas: number }>(
       `SELECT c.id AS congregation_id,
               COALESCE((SELECT SUM(valor) FROM transferencias WHERE destino_congregation_id = c.id), 0) AS recebidas,
               COALESCE((SELECT SUM(valor) FROM transferencias WHERE origem_congregation_id = c.id), 0) AS enviadas

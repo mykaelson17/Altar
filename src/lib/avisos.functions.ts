@@ -19,7 +19,7 @@ export const getAvisosPendentesHoje = createServerFn({ method: "GET" })
     const cond = congId ? `AND (a.congregation_id IS NULL OR a.congregation_id = $3)` : `AND a.congregation_id IS NULL`;
     const vals = congId ? [context.auth.userId, hoje, congId] : [context.auth.userId, hoje];
 
-    return q(
+    return await q(
       `SELECT a.* FROM avisos a
         WHERE a.ativo = 1
           AND NOT EXISTS (
@@ -49,7 +49,7 @@ export const marcarAvisoVistoHoje = createServerFn({ method: "POST" })
 export const listAllAvisos = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q(
+    return await q(
       `SELECT a.*, c.nome AS congregation_nome, u.full_name AS criado_por_nome
          FROM avisos a
          LEFT JOIN congregations c ON c.id = a.congregation_id

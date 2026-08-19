@@ -616,12 +616,7 @@ function Page() {
                   <Label>Data de batismo</Label>
                   <Input type="date" value={form.data_batismo} onChange={(e) => setForm((s) => ({ ...s, data_batismo: e.target.value }))} />
                 </div>
-                <div>
-                  <Label>Data da recepção <span className="text-destructive">*</span></Label>
-                  <Input type="date" value={form.data_recepcao} onChange={(e) => setForm((s) => ({ ...s, data_recepcao: e.target.value }))} />
-                </div>
-
-                <div className="md:col-span-3 mt-2">
+                <div className="md:col-span-2">
                   <Label>Carta de Mudança (opcional)</Label>
                   <div className="mt-1">
                     {form.carta_mudanca_url ? (
@@ -650,6 +645,10 @@ function Page() {
                       </label>
                     )}
                   </div>
+                </div>
+                <div>
+                  <Label>Data da recepção <span className="text-destructive">*</span></Label>
+                  <Input type="date" value={form.data_recepcao} onChange={(e) => setForm((s) => ({ ...s, data_recepcao: e.target.value }))} />
                 </div>
               </div>
             </div>

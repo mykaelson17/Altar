@@ -14,7 +14,7 @@ export type PublicBranding = {
 
 // Sem exigir login — a tela de /auth usa isso antes de qualquer autenticação.
 export const getPublicBranding = createServerFn({ method: "GET" }).handler(async (): Promise<PublicBranding> => {
-  const rows = q<{ key: string; value: string }>(
+  const rows = await q<{ key: string; value: string }>(
     `SELECT key, value FROM church_settings WHERE key IN (${BRANDING_KEYS.map((k) => `'${k}'`).join(",")})`,
   );
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));

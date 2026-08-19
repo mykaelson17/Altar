@@ -142,11 +142,11 @@ function Page() {
           
           <div><Label>Data de Conversao</Label><Input type="date" value={form.data_conversao} onChange={e => setForm({...form, data_conversao: e.target.value})} disabled={readOnly} /></div>
           <div><Label>Data de Batismo</Label><Input type="date" value={form.data_batismo} onChange={e => setForm({...form, data_batismo: e.target.value})} disabled={readOnly} /></div>
-          <div><Label>Data da recepção</Label><Input type="date" value={form.data_recepcao} onChange={e => setForm({...form, data_recepcao: e.target.value})} disabled={readOnly} /></div>
           <div>
             <Label>Carta de Mudança (opcional)</Label>
             <CartaMudancaSection memberId={id} url={form.carta_mudanca_url} onUploaded={(url) => setForm({ ...form, carta_mudanca_url: url })} />
           </div>
+          <div><Label>Data da recepção</Label><Input type="date" value={form.data_recepcao} onChange={e => setForm({...form, data_recepcao: e.target.value})} disabled={readOnly} /></div>
         </CardContent>
       </Card>
 

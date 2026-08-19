@@ -15,13 +15,13 @@ export type PlanoConta = {
 export const listPlanoContas = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async () => {
-    return q<PlanoConta>(`SELECT * FROM plano_contas WHERE ativo = 1 ORDER BY tipo, sort_order, nome`);
+    return await q<PlanoConta>(`SELECT * FROM plano_contas WHERE ativo = 1 ORDER BY tipo, sort_order, nome`);
   });
 
 export const listAllPlanoContas = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q<PlanoConta>(`SELECT * FROM plano_contas ORDER BY tipo, sort_order, nome`);
+    return await q<PlanoConta>(`SELECT * FROM plano_contas ORDER BY tipo, sort_order, nome`);
   });
 
 const PlanoContaSchema = z.object({

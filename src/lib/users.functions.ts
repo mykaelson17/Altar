@@ -9,7 +9,7 @@ const ROLES = ["master", "admin", "coordenador", "usuario"] as const;
 export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q<{
+    return await q<{
       id: string; username: string; full_name: string; role: string; congregation_id: string | null; active: boolean;
     }>(
       `SELECT u.id, u.username, u.full_name, u.role, u.congregation_id, u.active

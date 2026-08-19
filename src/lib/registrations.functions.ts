@@ -13,7 +13,7 @@ export const searchParticipants = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ query: z.string().trim().min(2) }).parse(d))
   .handler(async ({ data }) => {
-    return q(
+    return await q(
       `SELECT id, nome, email, telefone, congregacao, departamento, foto_url, data_nascimento, sexo, cargo
          FROM participants
         WHERE nome LIKE $1 OR email LIKE $1
@@ -48,21 +48,21 @@ export const listRegistrations = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ event_id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    const regs = q<RegistrationRow>(`SELECT * FROM registrations WHERE event_id = $1 ORDER BY nome`, [data.event_id]);
+    const regs = await q<RegistrationRow>(`SELECT * FROM registrations WHERE event_id = $1 ORDER BY nome`, [data.event_id]);
     const ids = regs.map((r) => r.id);
     if (ids.length === 0) return [];
 
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
-    const pagos = q<{ registration_id: string; total: number }>(
+    const pagos = await q<{ registration_id: string; total: number }>(
       `SELECT registration_id, COALESCE(SUM(valor),0) AS total FROM payments
         WHERE registration_id IN (${placeholders}) AND status = 'PAGO' GROUP BY registration_id`,
       ids,
     );
-    const checklistTotal = q<{ event_id: string; c: number }>(
+    const checklistTotal = await q<{ event_id: string; c: number }>(
       `SELECT event_id, COUNT(*) AS c FROM event_checklist_items WHERE event_id = $1 GROUP BY event_id`,
       [data.event_id],
     );
-    const checklistFeitos = q<{ registration_id: string; c: number }>(
+    const checklistFeitos = await q<{ registration_id: string; c: number }>(
       `SELECT registration_id, COUNT(*) AS c FROM registration_checklist
         WHERE registration_id IN (${placeholders}) AND concluido = 1 GROUP BY registration_id`,
       ids,
@@ -94,8 +94,8 @@ export const getRegistration = createServerFn({ method: "GET" })
     const registration = await q1<RegistrationRow>(`SELECT * FROM registrations WHERE id = $1`, [data.id]);
     if (!registration) throw new Error("Inscrição não encontrada.");
     const event = await q1(`SELECT * FROM events WHERE id = $1`, [registration.event_id]);
-    const payments = q(`SELECT * FROM payments WHERE registration_id = $1 ORDER BY vencimento`, [data.id]);
-    const checklist = q(
+    const payments = await q(`SELECT * FROM payments WHERE registration_id = $1 ORDER BY vencimento`, [data.id]);
+    const checklist = await q(
       `SELECT eci.id AS checklist_item_id, eci.label, eci.sort_order,
               COALESCE(rc.concluido, 0) AS concluido, rc.concluido_em
          FROM event_checklist_items eci
@@ -104,7 +104,7 @@ export const getRegistration = createServerFn({ method: "GET" })
         ORDER BY eci.sort_order`,
       [data.id, registration.event_id],
     );
-    const attendance = q(`SELECT * FROM attendance WHERE registration_id = $1 ORDER BY data_hora DESC`, [data.id]);
+    const attendance = await q(`SELECT * FROM attendance WHERE registration_id = $1 ORDER BY data_hora DESC`, [data.id]);
     return { registration, event, payments, checklist, attendance };
   });
 
@@ -157,7 +157,7 @@ export const createRegistration = createServerFn({ method: "POST" })
     );
 
     // Cria uma linha de checklist (não marcada) pra cada item do template do evento.
-    const items = q<{ id: string }>(`SELECT id FROM event_checklist_items WHERE event_id = $1`, [data.event_id]);
+    const items = await q<{ id: string }>(`SELECT id FROM event_checklist_items WHERE event_id = $1`, [data.event_id]);
     for (const item of items) {
       await q1(
         `INSERT INTO registration_checklist (registration_id, checklist_item_id, concluido) VALUES ($1,$2,0)`,
@@ -199,7 +199,7 @@ export const createPublicRegistration = createServerFn({ method: "POST" })
     );
 
     // Cria uma linha de checklist (não marcada) pra cada item do template do evento.
-    const items = q<{ id: string }>(`SELECT id FROM event_checklist_items WHERE event_id = $1`, [data.event_id]);
+    const items = await q<{ id: string }>(`SELECT id FROM event_checklist_items WHERE event_id = $1`, [data.event_id]);
     for (const item of items) {
       await q1(
         `INSERT INTO registration_checklist (registration_id, checklist_item_id, concluido) VALUES ($1,$2,0)`,
@@ -373,7 +373,7 @@ export const getEventDashboard = createServerFn({ method: "GET" })
         WHERE r.event_id = $1 AND p.status = 'PAGO'`,
       [data.event_id],
     );
-    const regs = q<{ id: string; valor_total: number }>(
+    const regs = await q<{ id: string; valor_total: number }>(
       `SELECT id, valor_total FROM registrations WHERE event_id = $1 AND status = 'INSCRITO'`, [data.event_id],
     );
     const ids = regs.map((r) => r.id);
@@ -381,7 +381,7 @@ export const getEventDashboard = createServerFn({ method: "GET" })
     let pendentes = 0;
     if (ids.length > 0) {
       const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
-      const totals = q<{ registration_id: string; total: number }>(
+      const totals = await q<{ registration_id: string; total: number }>(
         `SELECT registration_id, COALESCE(SUM(valor),0) AS total FROM payments
           WHERE registration_id IN (${placeholders}) AND status = 'PAGO' GROUP BY registration_id`,
         ids,

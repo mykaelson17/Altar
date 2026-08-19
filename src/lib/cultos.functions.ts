@@ -57,11 +57,11 @@ export const listCultos = createServerFn({ method: "GET" })
       vals.push(periodo);
     }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    const cultos = q<Culto>(`SELECT * FROM cultos ${where} ORDER BY data DESC, horario DESC`, vals);
+    const cultos = await q<Culto>(`SELECT * FROM cultos ${where} ORDER BY data DESC, horario DESC`, vals);
     const ids = cultos.map((c) => c.id);
     if (ids.length === 0) return cultos.map((c) => ({ ...c, totalEscalados: 0, totalConfirmados: 0 }));
     const placeholders = ids.map((_, idx) => `$${idx + 1}`).join(",");
-    const counts = q<{ culto_id: string; total: number; confirmados: number }>(
+    const counts = await q<{ culto_id: string; total: number; confirmados: number }>(
       `SELECT culto_id, COUNT(*) AS total, SUM(CASE WHEN status='CONFIRMADO' THEN 1 ELSE 0 END) AS confirmados
          FROM escalas WHERE culto_id IN (${placeholders}) GROUP BY culto_id`,
       ids,
@@ -142,7 +142,7 @@ export const getCultoDetail = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const culto = await q1<Culto>(`SELECT * FROM cultos WHERE id = $1`, [data.id]);
     if (!culto) throw new Error("Culto não encontrado.");
-    const escalas = q(
+    const escalas = await q(
       `SELECT e.*, p.nome AS participant_nome, p.telefone AS participant_telefone
          FROM escalas e JOIN participants p ON p.id = e.participant_id
         WHERE e.culto_id = $1 ORDER BY e.funcao, p.nome`,
@@ -197,7 +197,7 @@ export const listEscalasDoMembro = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ participantId: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    return q(
+    return await q(
       `SELECT e.*, c.tipo AS culto_tipo, c.data AS culto_data, c.horario AS culto_horario
          FROM escalas e JOIN cultos c ON c.id = e.culto_id
         WHERE e.participant_id = $1 AND c.data >= date('now')

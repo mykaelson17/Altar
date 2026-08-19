@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Trash2, Shirt, ListChecks, Users, ChevronDown, ChevronRight, QrCode, ScanLine, BarChart3, Upload, X, Copy, Edit } from "lucide-react";
+import { Plus, Trash2, Shirt, ListChecks, Users, ChevronDown, ChevronRight, QrCode, ScanLine, BarChart3, Upload, X, Copy, Edit, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getEvent, addUniform, removeUniform, addChecklistItem, removeChecklistItem, updateEvent } from "@/lib/events.functions";
@@ -114,7 +114,10 @@ function Page() {
             <Edit className="size-4 mr-2" /> Editar
           </Button>
           <Link to="/eventos/$id/relatorios" params={{ id }}>
-            <Button variant="outline"><BarChart3 className="size-4 mr-2" /> Relatórios e Comunicação</Button>
+            <Button variant="outline"><BarChart3 className="size-4 mr-2" /> Relatórios</Button>
+          </Link>
+          <Link to="/eventos/$id/controle" params={{ id }}>
+            <Button variant="outline"><CheckCircle2 className="size-4 mr-2" /> Controle de Entrega</Button>
           </Link>
           <Link to="/checkin">
             <Button variant="outline"><ScanLine className="size-4 mr-2" /> Check-in (QR Code)</Button>

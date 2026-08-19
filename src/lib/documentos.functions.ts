@@ -14,13 +14,13 @@ export type DocumentTemplate = {
 export const listTemplates = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async () => {
-    return q<DocumentTemplate>(`SELECT * FROM document_templates WHERE ativo = 1 ORDER BY nome`);
+    return await q<DocumentTemplate>(`SELECT * FROM document_templates WHERE ativo = 1 ORDER BY nome`);
   });
 
 export const listAllTemplates = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q<DocumentTemplate>(`SELECT * FROM document_templates ORDER BY nome`);
+    return await q<DocumentTemplate>(`SELECT * FROM document_templates ORDER BY nome`);
   });
 
 const TemplateSchema = z.object({

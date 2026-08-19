@@ -326,11 +326,11 @@ function ComprovanteViewer({ transactionId, onClose }: { transactionId: string |
         {isLoading && <div className="py-10 grid place-items-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>}
         {data && !isLoading && (
           data.isPdf ? (
-            <a href={`data:${data.mimeType};base64,${data.base64}`} download="comprovante.pdf" className="text-sm underline text-primary block text-center py-6">
+            <a href={data.publicUrl} target="_blank" rel="noreferrer" download="comprovante.pdf" className="text-sm underline text-primary block text-center py-6">
               Abrir/baixar PDF do comprovante
             </a>
           ) : (
-            <img src={`data:${data.mimeType};base64,${data.base64}`} alt="Comprovante" className="w-full rounded-md border" />
+            <img src={data.publicUrl} alt="Comprovante" className="w-full rounded-md border" />
           )
         )}
         {!data && !isLoading && transactionId && <p className="text-sm text-muted-foreground text-center py-6">Comprovante não encontrado.</p>}

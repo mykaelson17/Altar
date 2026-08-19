@@ -17,7 +17,7 @@ export type Congregation = {
 export const listCongregations = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async () => {
-    return q<Congregation>(`SELECT * FROM congregations ORDER BY tipo DESC, nome`);
+    return await q<Congregation>(`SELECT * FROM congregations ORDER BY tipo DESC, nome`);
   });
 
 // Congregações com pendência de prestação de contas — "inadimplente" aqui
@@ -26,10 +26,10 @@ export const listCongregations = createServerFn({ method: "GET" })
 export const listCongregationsComStatusPrestacao = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    const congs = q<Congregation>(`SELECT * FROM congregations WHERE tipo = 'CONGREGACAO' ORDER BY nome`);
+    const congs = await q<Congregation>(`SELECT * FROM congregations WHERE tipo = 'CONGREGACAO' ORDER BY nome`);
     const mesAtual = new Date().toISOString().slice(0, 7); // YYYY-MM
 
-    const pendencias = q<{ congregation_id: string; qtd: number; mais_antigo: string }>(
+    const pendencias = await q<{ congregation_id: string; qtd: number; mais_antigo: string }>(
       `SELECT congregation_id, COUNT(*) AS qtd, MIN(data) AS mais_antigo
          FROM finance_transactions
         WHERE prestacao_conta_id IS NULL AND strftime('%Y-%m', data) < $1

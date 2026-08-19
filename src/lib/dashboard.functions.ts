@@ -37,12 +37,12 @@ export const getPastorDashboard = createServerFn({ method: "GET" })
       scoped ? [periodo, scoped] : [periodo],
     );
 
-    const situacoes = q<{ situacao: string; c: number }>(
+    const situacoes = await q<{ situacao: string; c: number }>(
       `SELECT situacao, COUNT(*) AS c FROM participants WHERE 1=1 ${condMembros} GROUP BY situacao`, valsMembros1,
     );
 
     // Aniversariantes do mês (dia/mês, independente do ano de nascimento).
-    const aniversariantes = q<{ id: string; nome: string; data_nascimento: string }>(
+    const aniversariantes = await q<{ id: string; nome: string; data_nascimento: string }>(
       `SELECT id, nome, data_nascimento FROM participants
         WHERE data_nascimento IS NOT NULL AND strftime('%m', data_nascimento) = $1 ${scoped ? `AND congregation_id = $2` : ""}
         ORDER BY strftime('%d', data_nascimento)`,
@@ -52,7 +52,7 @@ export const getPastorDashboard = createServerFn({ method: "GET" })
     const eventosAtivos = await q1<{ c: number }>(`SELECT COUNT(*) AS c FROM events WHERE status = 'ATIVO'`);
 
     // Faixa etária geral de todos os membros (não só por evento).
-    const idades = q<{ data_nascimento: string | null }>(
+    const idades = await q<{ data_nascimento: string | null }>(
       `SELECT data_nascimento FROM participants WHERE 1=1 ${condMembros}`, valsMembros1,
     );
     const hojeCalc = new Date();

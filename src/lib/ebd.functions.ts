@@ -36,7 +36,7 @@ export const listTurmas = createServerFn({ method: "GET" })
     const ids = turmas.map((t: any) => t.id);
     if (ids.length === 0) return turmas.map((t: any) => ({ ...t, totalAlunos: 0 }));
     const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(",");
-    const counts = q<{ turma_id: string; c: number }>(`SELECT turma_id, COUNT(*) AS c FROM ebd_alunos WHERE turma_id IN (${placeholders}) AND ano = ${ano} AND trimestre = ${trimestre} GROUP BY turma_id`, ids);
+    const counts = await q<{ turma_id: string; c: number }>(`SELECT turma_id, COUNT(*) AS c FROM ebd_alunos WHERE turma_id IN (${placeholders}) AND ano = ${ano} AND trimestre = ${trimestre} GROUP BY turma_id`, ids);
     const map = new Map(counts.map((c) => [c.turma_id, c.c]));
     return turmas.map((t: any) => ({ ...t, totalAlunos: map.get(t.id) ?? 0 }));
   });
@@ -104,7 +104,7 @@ export const getTurmaDetail = createServerFn({ method: "GET" })
 
     const turma = await q1<any>(`SELECT t.*, p.nome AS professor_nome FROM ebd_turmas t LEFT JOIN participants p ON p.id = t.professor_id WHERE t.id = $1`, [data.id]);
     if (!turma) throw new Error("Turma não encontrada.");
-    const alunos = q(
+    const alunos = await q(
       `SELECT ea.id AS matricula_id, p.id AS participant_id, p.nome, p.telefone
          FROM ebd_alunos ea JOIN participants p ON p.id = ea.participant_id
         WHERE ea.turma_id = $1 AND ea.ano = $2 AND ea.trimestre = $3 ORDER BY p.nome`,
@@ -172,7 +172,7 @@ export const getFrequenciaDoDia = createServerFn({ method: "POST" })
     const ano = data.ano ?? new Date().getFullYear();
     const trimestre = data.trimestre ?? Math.floor(new Date().getMonth() / 3) + 1;
     
-    return q(
+    return await q(
       `SELECT ea.participant_id, p.nome,
               COALESCE((SELECT presente FROM ebd_frequencia f WHERE f.turma_id = ea.turma_id AND f.participant_id = ea.participant_id AND f.data = $1), 0) AS presente
          FROM ebd_alunos ea JOIN participants p ON p.id = ea.participant_id
@@ -222,7 +222,7 @@ export const getFrequenciaHistorico = createServerFn({ method: "GET" })
     const dataInicial = `${data.ano}-${String(mesInicial).padStart(2, "0")}-01`;
     const dataFinal = `${data.ano}-${String(mesFinal).padStart(2, "0")}-31`;
 
-    return q<{ data: string; total: number; presentes: number }>(
+    return await q<{ data: string; total: number; presentes: number }>(
       `SELECT data, COUNT(*) AS total, SUM(presente) AS presentes
          FROM ebd_frequencia 
         WHERE turma_id = $1 AND data >= $2 AND data <= $3
@@ -247,7 +247,7 @@ export const getFrequenciaHistoricoGeral = createServerFn({ method: "GET" })
         LIMIT 10`,
       []
     );
-    return q<{ data: string; total: number; presentes: number }>(query, params);
+    return await q<{ data: string; total: number; presentes: number }>(query, params);
   });
 
 // ---------------------------------------------------------------------------
@@ -286,7 +286,7 @@ export const getFrequenciaResumoDoDia = createServerFn({ method: "GET" })
         WHERE 1=1 {{COND_TURMA}}`,
       [ano, trimestre, data.data]
     );
-    return q<{ turma_id: string; nome: string; inscritos: number; presentes: number }>(query, params);
+    return await q<{ turma_id: string; nome: string; inscritos: number; presentes: number }>(query, params);
   });
 
 
@@ -313,7 +313,7 @@ export const getFrequenciaPorTurmaGeral = createServerFn({ method: "GET" })
         ORDER BY presentes DESC`,
       [dataInicial, dataFinal]
     );
-    return q<{ turma_id: string; nome: string; total: number; presentes: number }>(query, params);
+    return await q<{ turma_id: string; nome: string; total: number; presentes: number }>(query, params);
   });
 
 export const getInscritosPresentesPorTurma = createServerFn({ method: "GET" })
@@ -327,7 +327,7 @@ export const getInscritosPresentesPorTurma = createServerFn({ method: "GET" })
          FROM ebd_turmas t WHERE 1=1 {{COND_TURMA}}`,
       [data.ano]
     );
-    const turmas = q<{ turma_id: string; nome: string; inscritos: number }>(turmasQuery, turmasParams);
+    const turmas = await q<{ turma_id: string; nome: string; inscritos: number }>(turmasQuery, turmasParams);
 
     const mm = String(data.mes).padStart(2, "0");
     const periodo = `${data.ano}-${mm}`;
@@ -338,7 +338,7 @@ export const getInscritosPresentesPorTurma = createServerFn({ method: "GET" })
         GROUP BY f.turma_id, f.data`,
       [periodo]
     );
-    const presencasPorTurma = q<{ turma_id: string; data: string; presentes: number }>(presencasQuery, presencasParams);
+    const presencasPorTurma = await q<{ turma_id: string; data: string; presentes: number }>(presencasQuery, presencasParams);
 
     return turmas.map((t) => {
       const chamadasDaTurma = presencasPorTurma.filter((p) => p.turma_id === t.turma_id);
@@ -371,7 +371,7 @@ export const getFrequenciaSemanal = createServerFn({ method: "GET" })
         ORDER BY f.data`,
       [dataInicial, dataFinal]
     );
-    const chamadas = q<{ turma_nome: string; data: string; presentes: number }>(query, params);
+    const chamadas = await q<{ turma_nome: string; data: string; presentes: number }>(query, params);
 
     const semanas = new Map<string, Record<string, any>>();
     
@@ -417,7 +417,7 @@ export const getTopMembrosPresenca = createServerFn({ method: "GET" })
         LIMIT 10`,
       [dataInicial, dataFinal]
     );
-    return q<{ participant_id: string; nome: string; total_presencas: number }>(query, params);
+    return await q<{ participant_id: string; nome: string; total_presencas: number }>(query, params);
   });
 
 // Relatório (Documentos): top 10 de CADA turma — agrupado, pronto pra
@@ -427,11 +427,11 @@ export const getTopMembrosPorTurma = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const scoped = scopeCongregation(context.auth);
     const { query, params } = applyCongregationFilter(scoped, `SELECT id, nome FROM ebd_turmas t WHERE 1=1 {{COND_TURMA}} ORDER BY nome`, []);
-    const turmas = q<{ id: string; nome: string }>(query, params);
+    const turmas = await q<{ id: string; nome: string }>(query, params);
 
     const resultado = [];
     for (const turma of turmas) {
-      const top = q<{ participant_id: string; nome: string; total_presencas: number }>(
+      const top = await q<{ participant_id: string; nome: string; total_presencas: number }>(
         `SELECT f.participant_id, p.nome, SUM(f.presente) AS total_presencas
            FROM ebd_frequencia f JOIN participants p ON p.id = f.participant_id
           WHERE f.turma_id = $1
@@ -454,7 +454,7 @@ export const getResumoTurmasRelatorio = createServerFn({ method: "GET" })
     const scoped = scopeCongregation(context.auth);
     const cond = turmaScopeCondition(scoped);
     const vals = scoped ? [scoped] : [];
-    return q<{ turma_id: string; nome: string; professor_nome: string | null; inscritos: number; totalChamadas: number; presentes: number }>(
+    return await q<{ turma_id: string; nome: string; professor_nome: string | null; inscritos: number; totalChamadas: number; presentes: number }>(
       `SELECT t.id AS turma_id, t.nome, prof.nome AS professor_nome,
               (SELECT COUNT(*) FROM ebd_alunos a WHERE a.turma_id = t.id) AS inscritos,
               COUNT(f.id) AS totalChamadas,

@@ -52,7 +52,7 @@ export const getAuditoria = createServerFn({ method: "GET" })
         throw new Error("Esse registro não pertence à sua congregação.");
       }
     }
-    return q(
+    return await q(
       `SELECT fa.*, u.full_name AS realizado_por_nome
          FROM financeiro_auditoria fa LEFT JOIN app_users u ON u.id = fa.realizado_por
         WHERE fa.tipo_entidade = $1 AND fa.entidade_id = $2
@@ -95,7 +95,7 @@ export const listTransactions = createServerFn({ method: "GET" })
       }
     }
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-    return q<FinanceTransaction>(`SELECT * FROM finance_transactions ${where} ORDER BY data DESC`, vals);
+    return await q<FinanceTransaction>(`SELECT * FROM finance_transactions ${where} ORDER BY data DESC`, vals);
   });
 
 const TransactionSchema = z.object({
@@ -199,7 +199,7 @@ export const getFinanceDaily = createServerFn({ method: "GET" })
     const cond = congId ? `AND congregation_id = $2` : "";
     const vals = congId ? [String(data.dias), congId] : [String(data.dias)];
 
-    return q<{ data: string; tipo: string; total: number }>(
+    return await q<{ data: string; tipo: string; total: number }>(
       `SELECT data, tipo, COALESCE(SUM(valor),0) AS total
          FROM finance_transactions
         WHERE data >= date('now', '-' || $1 || ' days') ${cond}
@@ -217,13 +217,13 @@ export const getFinanceSummary = createServerFn({ method: "GET" })
     const cond = congId ? `AND congregation_id = $2` : "";
     const vals = congId ? [String(data.ano), congId] : [String(data.ano)];
 
-    const porMes = q<{ mes: string; tipo: string; total: number }>(
+    const porMes = await q<{ mes: string; tipo: string; total: number }>(
       `SELECT strftime('%m', data) AS mes, tipo, COALESCE(SUM(valor),0) AS total
          FROM finance_transactions WHERE strftime('%Y', data) = $1 ${cond}
         GROUP BY mes, tipo ORDER BY mes`,
       vals,
     );
-    const porCategoria = q<{ categoria: string; tipo: string; total: number }>(
+    const porCategoria = await q<{ categoria: string; tipo: string; total: number }>(
       `SELECT categoria, tipo, COALESCE(SUM(valor),0) AS total
          FROM finance_transactions WHERE strftime('%Y', data) = $1 ${cond}
         GROUP BY categoria, tipo ORDER BY total DESC`,
@@ -266,7 +266,7 @@ export const getSaldoResumo = createServerFn({ method: "GET" })
 export const getSaldoPorCongregacao = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q<{ congregation_id: string; nome: string; entradas: number; saidas: number; transferenciasRecebidas: number; transferenciasEnviadas: number; saldo: number }>(
+    return await q<{ congregation_id: string; nome: string; entradas: number; saidas: number; transferenciasRecebidas: number; transferenciasEnviadas: number; saldo: number }>(
       `SELECT c.id AS congregation_id, c.nome,
               COALESCE(SUM(CASE WHEN ft.tipo='ENTRADA' THEN ft.valor ELSE 0 END),0) AS entradas,
               COALESCE(SUM(CASE WHEN ft.tipo='SAIDA' THEN ft.valor ELSE 0 END),0) AS saidas,
@@ -294,7 +294,7 @@ export const getConsolidado = createServerFn({ method: "GET" })
     const mm = String(data.mes).padStart(2, "0");
     const periodo = `${data.ano}-${mm}`;
 
-    const porCongregacao = q<{ congregation_id: string | null; nome: string | null; entradas: number; saidas: number }>(
+    const porCongregacao = await q<{ congregation_id: string | null; nome: string | null; entradas: number; saidas: number }>(
       `SELECT ft.congregation_id, c.nome,
               COALESCE(SUM(CASE WHEN ft.tipo='ENTRADA' THEN ft.valor ELSE 0 END),0) AS entradas,
               COALESCE(SUM(CASE WHEN ft.tipo='SAIDA' THEN ft.valor ELSE 0 END),0) AS saidas
@@ -304,10 +304,10 @@ export const getConsolidado = createServerFn({ method: "GET" })
       [periodo],
     );
 
-    const prestacoes = q<any>(`SELECT congregation_id, status FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
+    const prestacoes = await q<any>(`SELECT congregation_id, status FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
     const statusMap = new Map(prestacoes.map((p) => [p.congregation_id, p.status]));
 
-    const todasCongs = q<{ id: string; nome: string; tipo: string }>(`SELECT id, nome, tipo FROM congregations ORDER BY tipo DESC, nome`);
+    const todasCongs = await q<{ id: string; nome: string; tipo: string }>(`SELECT id, nome, tipo FROM congregations ORDER BY tipo DESC, nome`);
     const dadosMap = new Map(porCongregacao.map((r) => [r.congregation_id, r]));
 
     const linhas = todasCongs.map((c) => {
@@ -327,7 +327,7 @@ export const getConsolidado = createServerFn({ method: "GET" })
     const totalSaidas = porCongregacao.reduce((s, r) => s + r.saidas, 0);
 
     // Evolução dos últimos 6 meses (todas as congregações somadas).
-    const evolucao = q<{ mes: string; tipo: string; total: number }>(
+    const evolucao = await q<{ mes: string; tipo: string; total: number }>(
       `SELECT strftime('%Y-%m', data) AS mes, tipo, COALESCE(SUM(valor),0) AS total
          FROM finance_transactions
         WHERE data >= date($1 || '-01', '-5 months')
@@ -353,7 +353,7 @@ export const getPendingAccountability = createServerFn({ method: "GET" })
     if (!congId) throw new Error("Só uma congregação específica pode enviar prestação de contas (a sede recebe, não envia).");
 
     const mm = String(data.mes).padStart(2, "0");
-    const rows = q<FinanceTransaction>(
+    const rows = await q<FinanceTransaction>(
       `SELECT * FROM finance_transactions
         WHERE congregation_id = $1 AND strftime('%Y-%m', data) = $2 AND prestacao_conta_id IS NULL
         ORDER BY data`,
@@ -372,7 +372,7 @@ export const sendAccountability = createServerFn({ method: "POST" })
     if (!congId) throw new Error("Só uma congregação específica pode enviar prestação de contas.");
 
     const mm = String(data.mes).padStart(2, "0");
-    const rows = q<FinanceTransaction>(
+    const rows = await q<FinanceTransaction>(
       `SELECT * FROM finance_transactions
         WHERE congregation_id = $1 AND strftime('%Y-%m', data) = $2 AND prestacao_conta_id IS NULL`,
       [congId, `${data.ano}-${mm}`],
@@ -466,8 +466,8 @@ export const getPrestacaoStatusResumo = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .inputValidator((d: unknown) => z.object({ mes: z.number().int().min(1).max(12), ano: z.number().int() }).parse(d))
   .handler(async ({ data }) => {
-    const congs = q<{ id: string; nome: string }>(`SELECT id, nome FROM congregations WHERE tipo = 'CONGREGACAO' ORDER BY nome`);
-    const prestacoes = q<any>(`SELECT * FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
+    const congs = await q<{ id: string; nome: string }>(`SELECT id, nome FROM congregations WHERE tipo = 'CONGREGACAO' ORDER BY nome`);
+    const prestacoes = await q<any>(`SELECT * FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
     const map = new Map(prestacoes.map((p) => [p.congregation_id, p]));
 
     const linhas = congs.map((c) => {
@@ -498,7 +498,7 @@ export const getComparativoAnual = createServerFn({ method: "GET" })
     const congId = scoped ?? data.congregation_id;
     const cond = congId ? `AND congregation_id = $1` : "";
     const vals = congId ? [congId] : [];
-    return q<{ ano: string; tipo: string; total: number }>(
+    return await q<{ ano: string; tipo: string; total: number }>(
       `SELECT strftime('%Y', data) AS ano, tipo, COALESCE(SUM(valor),0) AS total
          FROM finance_transactions WHERE 1=1 ${cond}
         GROUP BY ano, tipo ORDER BY ano`,
@@ -510,7 +510,7 @@ export const getComparativoAnual = createServerFn({ method: "GET" })
 export const listAccountabilityReports = createServerFn({ method: "GET" })
   .middleware([requireAdmin])
   .handler(async () => {
-    return q(
+    return await q(
       `SELECT pc.*, c.nome AS congregation_nome, u.full_name AS enviado_por_nome,
               (SELECT COUNT(*) FROM finance_transactions ft WHERE ft.prestacao_conta_id = pc.id AND ft.comprovante_url IS NOT NULL) AS total_comprovantes
          FROM prestacoes_contas pc
@@ -531,8 +531,8 @@ export const getAccountabilityDetail = createServerFn({ method: "GET" })
     if (!prestacao) throw new Error("Prestação de contas não encontrada.");
     const scoped = scopeCongregation(context.auth);
     if (scoped && prestacao.congregation_id !== scoped) throw new Error("Essa prestação não é da sua congregação.");
-    const transactions = q(`SELECT * FROM finance_transactions WHERE prestacao_conta_id = $1 ORDER BY data`, [data.id]);
-    const auditoria = q(
+    const transactions = await q(`SELECT * FROM finance_transactions WHERE prestacao_conta_id = $1 ORDER BY data`, [data.id]);
+    const auditoria = await q(
       `SELECT fa.*, u.full_name AS realizado_por_nome FROM financeiro_auditoria fa
         LEFT JOIN app_users u ON u.id = fa.realizado_por
        WHERE fa.tipo_entidade = 'PRESTACAO' AND fa.entidade_id = $1 ORDER BY fa.created_at DESC`,
@@ -562,7 +562,7 @@ export const exportFinanceiroExcel = createServerFn({ method: "GET" })
     const cond = congId ? `AND ft.congregation_id = $2` : "";
     const vals = congId ? [periodo, congId] : [periodo];
 
-    const linhas = q<any>(
+    const linhas = await q<any>(
       `SELECT ft.data, ft.tipo, ft.categoria, ft.valor, ft.forma_pagamento, ft.descricao, c.nome AS congregacao_nome
          FROM finance_transactions ft LEFT JOIN congregations c ON c.id = ft.congregation_id
         WHERE strftime('%Y-%m', ft.data) = $1 ${cond}
@@ -604,7 +604,7 @@ export const exportConsolidadoExcel = createServerFn({ method: "GET" })
     const mm = String(data.mes).padStart(2, "0");
     const periodo = `${data.ano}-${mm}`;
 
-    const porCongregacao = q<any>(
+    const porCongregacao = await q<any>(
       `SELECT ft.congregation_id, c.nome,
               COALESCE(SUM(CASE WHEN ft.tipo='ENTRADA' THEN ft.valor ELSE 0 END),0) AS entradas,
               COALESCE(SUM(CASE WHEN ft.tipo='SAIDA' THEN ft.valor ELSE 0 END),0) AS saidas
@@ -614,7 +614,7 @@ export const exportConsolidadoExcel = createServerFn({ method: "GET" })
         ORDER BY entradas DESC`,
       [periodo],
     );
-    const prestacoes = q<any>(`SELECT congregation_id, status FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
+    const prestacoes = await q<any>(`SELECT congregation_id, status FROM prestacoes_contas WHERE mes = $1 AND ano = $2`, [data.mes, data.ano]);
     const statusMap = new Map(prestacoes.map((p) => [p.congregation_id, p.status]));
 
     const workbook = new ExcelJS.Workbook();

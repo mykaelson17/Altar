@@ -18,7 +18,7 @@ export type ChurchPixSettings = {
 export const getChurchPixSettings = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async () => {
-    const rows = q<{ key: string; value: string }>(
+    const rows = await q<{ key: string; value: string }>(
       `SELECT key, value FROM church_settings WHERE key IN ('pix_chave','pix_nome_recebedor','pix_cidade')`,
     );
     const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -72,7 +72,7 @@ async function buildChargeQr(txid: string, valor: number | undefined, descricao:
 }
 
 async function getChurchPixSettingsInternal(): Promise<ChurchPixSettings> {
-  const rows = q<{ key: string; value: string }>(
+  const rows = await q<{ key: string; value: string }>(
     `SELECT key, value FROM church_settings WHERE key IN ('pix_chave','pix_nome_recebedor','pix_cidade')`,
   );
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -118,7 +118,7 @@ export const generateChargeForMember = createServerFn({ method: "POST" })
 export const listPendingPixCharges = createServerFn({ method: "GET" })
   .middleware([requireFinance])
   .handler(async () => {
-    return q(
+    return await q(
       `SELECT pc.*, p.nome AS membro_nome, p.telefone AS membro_telefone
          FROM pix_charges pc LEFT JOIN participants p ON p.id = pc.participant_id
         WHERE pc.status = 'PENDENTE' ORDER BY pc.created_at DESC`,

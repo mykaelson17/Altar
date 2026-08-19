@@ -141,7 +141,7 @@ export const generateLicensePayment = createServerFn({ method: "POST" })
 
 export const listLicensePayments = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdminSession();
-  return q(`SELECT * FROM license_payments ORDER BY created_at DESC LIMIT 30`);
+  return await q(`SELECT * FROM license_payments ORDER BY created_at DESC LIMIT 30`);
 });
 
 // Só o master confirma — é ele quem de fato recebe o PIX na conta dele.

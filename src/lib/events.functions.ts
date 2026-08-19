@@ -40,7 +40,7 @@ export type EventScheduleRow = {
 export const listEvents = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async () => {
-    return q<EventRow>(`SELECT * FROM events ORDER BY data_inicio DESC`);
+    return await q<EventRow>(`SELECT * FROM events ORDER BY data_inicio DESC`);
   });
 
 export const getEvent = createServerFn({ method: "GET" })

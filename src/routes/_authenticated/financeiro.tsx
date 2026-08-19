@@ -422,7 +422,7 @@ function ComprovanteButton({ transactionId, hasComprovante }: { transactionId: s
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
-  const [viewData, setViewData] = useState<{ base64: string; mimeType: string; isPdf: boolean } | null>(null);
+  const [viewData, setViewData] = useState<{ publicUrl: string; mimeType: string; isPdf: boolean } | null>(null);
   const [loadingView, setLoadingView] = useState(false);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["transactions"] });

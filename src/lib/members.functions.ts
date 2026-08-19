@@ -93,7 +93,7 @@ export const listMembers = createServerFn({ method: "GET" })
       idade_asc: "ORDER BY data_nascimento DESC",
       idade_desc: "ORDER BY data_nascimento ASC",
     }[data.orderBy ?? "nome_asc"] ?? "ORDER BY nome ASC";
-    return q<MemberRow>(`SELECT * FROM participants ${where} ${orderClause} LIMIT 500`, vals);
+    return await q<MemberRow>(`SELECT * FROM participants ${where} ${orderClause} LIMIT 500`, vals);
   });
 
 export const getMember = createServerFn({ method: "GET" })
@@ -113,7 +113,7 @@ export const getMember = createServerFn({ method: "GET" })
     const conjuge = member.conjuge_id
       ? await q1<{ id: string; nome: string }>(`SELECT id, nome FROM participants WHERE id = $1`, [member.conjuge_id])
       : null;
-    const filhos = q<{ id: string; nome: string; data_nascimento: string | null }>(
+    const filhos = await q<{ id: string; nome: string; data_nascimento: string | null }>(
       `SELECT id, nome, data_nascimento FROM participants WHERE responsavel_id = $1`, [data.id],
     );
     const responsavelPastoral = member.responsavel_pastoral_id
@@ -121,7 +121,7 @@ export const getMember = createServerFn({ method: "GET" })
       : null;
     const isPastorRole = ["master", "admin", "coordenador"].includes(context.auth.role);
     const pastoralNotes = isPastorRole
-      ? q(`SELECT pcn.*, u.full_name AS registrado_por_nome
+      ? await q(`SELECT pcn.*, u.full_name AS registrado_por_nome
              FROM pastoral_care_notes pcn LEFT JOIN app_users u ON u.id = pcn.registrado_por
             WHERE pcn.participant_id = $1 ORDER BY pcn.created_at DESC`, [data.id])
       : [];
@@ -133,12 +133,12 @@ export const listPossibleLeaders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const scoped = scopeCongregation(context.auth);
     if (scoped) {
-      return q<{ id: string; full_name: string; role: string }>(
+      return await q<{ id: string; full_name: string; role: string }>(
         `SELECT id, full_name, role FROM app_users WHERE congregation_id = $1 AND active = 1 ORDER BY full_name`,
         [scoped],
       );
     }
-    return q<{ id: string; full_name: string; role: string }>(
+    return await q<{ id: string; full_name: string; role: string }>(
       `SELECT id, full_name, role FROM app_users WHERE active = 1 ORDER BY full_name`,
     );
   });
@@ -288,7 +288,7 @@ export const getMemberStats = createServerFn({ method: "GET" })
     const anoAtual = String(hoje.getFullYear());
     const periodo = `${anoAtual}-${mesAtual}`;
 
-    const situacoes = q<{ situacao: string; c: number }>(
+    const situacoes = await q<{ situacao: string; c: number }>(
       `SELECT situacao, COUNT(*) AS c FROM participants ${cond} GROUP BY situacao`
     );
     const total = situacoes.reduce((s, r) => s + r.c, 0);
@@ -296,18 +296,18 @@ export const getMemberStats = createServerFn({ method: "GET" })
     const afastados = situacoes.find((r) => r.situacao === "AFASTADO")?.c ?? 0;
     const congregados = situacoes.find((r) => r.situacao === "CONGREGADO")?.c ?? 0;
 
-    const novosMes = (q1<{ c: number }>(
+    const novosMes = (await q1<{ c: number }>(
       `SELECT COUNT(*) AS c FROM participants WHERE strftime('%Y-%m', created_at) = '${periodo}'${whereCongregation ? ` AND ${whereCongregation}` : ""}`
     )?.c) ?? 0;
 
-    const sexos = q<{ sexo: string | null; c: number }>(
+    const sexos = await q<{ sexo: string | null; c: number }>(
       `SELECT sexo, COUNT(*) AS c FROM participants ${cond} GROUP BY sexo`
     );
     const masc = sexos.find((r) => r.sexo === "M")?.c ?? 0;
     const fem = sexos.find((r) => r.sexo === "F")?.c ?? 0;
     const semSexo = sexos.find((r) => !r.sexo)?.c ?? 0;
 
-    const nascimentos = q<{ data_nascimento: string | null }>(
+    const nascimentos = await q<{ data_nascimento: string | null }>(
       `SELECT data_nascimento FROM participants ${cond}`
     );
     const hojeCalc = new Date();
@@ -327,7 +327,7 @@ export const getMemberStats = createServerFn({ method: "GET" })
       else adultos++;
     }
 
-    const aniversariantes = q<{ id: string; nome: string; data_nascimento: string; departamento: string | null }>(
+    const aniversariantes = await q<{ id: string; nome: string; data_nascimento: string; departamento: string | null }>(
       `SELECT id, nome, data_nascimento, departamento FROM participants
         WHERE data_nascimento IS NOT NULL AND strftime('%m', data_nascimento) = '${mesAtual}'${whereCongregation ? ` AND ${whereCongregation}` : ""}
         ORDER BY strftime('%d', data_nascimento), nome`
@@ -343,7 +343,7 @@ export const getMemberStats = createServerFn({ method: "GET" })
       const anoM = d.getFullYear();
       const mesM = String(d.getMonth() + 1).padStart(2, "0");
       const periodo2 = `${anoM}-${mesM}`;
-      const r = q1<{ c: number }>(
+      const r = await q1<{ c: number }>(
         `SELECT COUNT(*) AS c FROM participants WHERE strftime('%Y-%m', created_at) = '${periodo2}'${whereCongregation ? ` AND ${whereCongregation}` : ""}`
       );
       membrosPorMes.push({ mes: `${mesesNomes[d.getMonth()]}/${String(anoM).slice(2)}`, novos: r?.c ?? 0 });

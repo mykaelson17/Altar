@@ -1,20 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { q1, getDataDir } from "./sqlite.server";
+import { uploadToStorage, getPublicUrl, deleteFromStorage } from "./supabase.server";
+import { q1 } from "./sqlite.server";
 import { requireFinance } from "./auth-middleware";
-
-// Comprovantes ficam em disco, na mesma pasta montada como volume do
-// Docker (data/comprovantes/) — não no banco. Isso evita que o SQLite
-// vá inchando com anos de fotos de nota fiscal; o banco só guarda o
-// caminho relativo do arquivo.
-//
-// Organização das pastas: comprovantes/<congregação>/<ano>-<mês>/<dia>/
-// — usa a DATA DO LANÇAMENTO (não a data do upload), que é o que faz
-// sentido pra quem for procurar depois ("o comprovante daquela despesa
-// de março"), mesmo que o comprovante só seja anexado meses depois.
 
 const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 const ALLOWED_EXT: Record<string, string> = {
@@ -25,27 +14,18 @@ const ALLOWED_EXT: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-function comprovantesRoot(): string {
-  const dir = join(getDataDir(), "comprovantes");
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
 function slugify(nome: string): string {
   const semAcento = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const limpo = semAcento.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return limpo || "sem-nome";
 }
 
-// Monta o caminho relativo (dentro de comprovantes/) baseado na
-// congregação e na data do lançamento — ex.:
-// "assembleia-central/2026-03/15/<arquivo>"
 function buildRelativePath(congregacaoNome: string | null, dataLancamento: string, filename: string): string {
   const pastaCongregacao = slugify(congregacaoNome || "sede-geral");
-  const [ano, mes, dia] = dataLancamento.split("-"); // formato esperado: YYYY-MM-DD
+  const [ano, mes, dia] = dataLancamento.split("-");
   const anoMes = ano && mes ? `${ano}-${mes}` : "sem-data";
   const diaPasta = dia || "00";
-  return join(pastaCongregacao, anoMes, diaPasta, filename);
+  return `${pastaCongregacao}/${anoMes}/${diaPasta}/${filename}`;
 }
 
 const UploadSchema = z.object({
@@ -79,18 +59,14 @@ export const uploadComprovante = createServerFn({ method: "POST" })
       ? await q1<{ nome: string }>(`SELECT nome FROM congregations WHERE id = $1`, [tx.congregation_id])
       : null;
 
-    // Se já tinha um comprovante anterior (mesmo que em outra pasta, caso
-    // a data/congregação tenha mudado depois), apaga do disco antes de trocar.
     if (tx.comprovante_url) {
-      const oldPath = join(comprovantesRoot(), tx.comprovante_url);
-      if (existsSync(oldPath)) unlinkSync(oldPath);
+      await deleteFromStorage("uploads", tx.comprovante_url).catch(() => {});
     }
 
     const storedName = `${data.transactionId}-${randomUUID()}.${ext}`;
     const relativePath = buildRelativePath(congregacao?.nome ?? null, tx.data, storedName);
-    const fullPath = join(comprovantesRoot(), relativePath);
-    mkdirSync(dirname(fullPath), { recursive: true });
-    writeFileSync(fullPath, buffer);
+    
+    await uploadToStorage("uploads", relativePath, buffer, data.mimeType);
 
     await q1(`UPDATE finance_transactions SET comprovante_url = $1 WHERE id = $2`, [relativePath, data.transactionId]);
     return { ok: true, path: relativePath };
@@ -106,14 +82,12 @@ export const getComprovante = createServerFn({ method: "GET" })
     );
     if (!tx?.comprovante_url) return null;
 
-    const filePath = join(comprovantesRoot(), tx.comprovante_url);
-    if (!existsSync(filePath)) return null;
-
+    const publicUrl = await getPublicUrl("uploads", tx.comprovante_url);
     const ext = tx.comprovante_url.split(".").pop() ?? "";
     const mimeByExt: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp", pdf: "application/pdf" };
-    const buffer = readFileSync(filePath);
+    
     return {
-      base64: buffer.toString("base64"),
+      publicUrl,
       mimeType: mimeByExt[ext] ?? "application/octet-stream",
       isPdf: ext === "pdf",
       path: tx.comprovante_url,
@@ -129,8 +103,7 @@ export const removeComprovante = createServerFn({ method: "POST" })
       [data.transactionId],
     );
     if (tx?.comprovante_url) {
-      const filePath = join(comprovantesRoot(), tx.comprovante_url);
-      if (existsSync(filePath)) unlinkSync(filePath);
+      await deleteFromStorage("uploads", tx.comprovante_url).catch(() => {});
     }
     await q1(`UPDATE finance_transactions SET comprovante_url = NULL WHERE id = $1`, [data.transactionId]);
     return { ok: true };

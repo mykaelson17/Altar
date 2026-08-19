@@ -27,7 +27,7 @@ async function buildReport(eventId: string, tipo: ReportType): Promise<ReportRes
   if (!event) throw new Error("Evento não encontrado.");
 
   if (tipo === "participantes") {
-    const rows = q(
+    const rows = await q(
       `SELECT nome, congregacao, departamento, telefone, sexo, idade, cargo, tamanho_roupa,
               CASE WHEN roupa_entregue = 1 THEN 'Sim' ELSE 'Não' END AS roupa_entregue, status
          FROM registrations WHERE event_id = $1 ORDER BY nome`,
@@ -36,12 +36,12 @@ async function buildReport(eventId: string, tipo: ReportType): Promise<ReportRes
     return { title: "Lista de participantes", columns: ["nome", "congregacao", "departamento", "telefone", "sexo", "idade", "cargo", "tamanho_roupa", "roupa_entregue", "status"], rows };
   }
   if (tipo === "inadimplentes") {
-    const regs = q<any>(`SELECT id, nome, congregacao, telefone, valor_total FROM registrations WHERE event_id = $1 AND status = 'INSCRITO'`, [eventId]);
+    const regs = await q<any>(`SELECT id, nome, congregacao, telefone, valor_total FROM registrations WHERE event_id = $1 AND status = 'INSCRITO'`, [eventId]);
     const ids = regs.map((r) => r.id);
     const pagosMap = new Map<string, number>();
     if (ids.length > 0) {
       const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
-      q<{ registration_id: string; total: number }>(
+      await q<{ registration_id: string; total: number }>(
         `SELECT registration_id, COALESCE(SUM(valor),0) AS total FROM payments WHERE registration_id IN (${placeholders}) AND status = 'PAGO' GROUP BY registration_id`,
         ids,
       ).forEach((p) => pagosMap.set(p.registration_id, p.total));
@@ -52,26 +52,26 @@ async function buildReport(eventId: string, tipo: ReportType): Promise<ReportRes
     return { title: "Participantes inadimplentes", columns: ["nome", "congregacao", "telefone", "valor_devido", "dias_em_atraso"], rows };
   }
   if (tipo === "sem_roupa") {
-    const rows = q(`SELECT nome, congregacao, telefone, tamanho_roupa FROM registrations WHERE event_id = $1 AND status = 'INSCRITO' AND roupa_entregue = 0`, [eventId]);
+    const rows = await q(`SELECT nome, congregacao, telefone, tamanho_roupa FROM registrations WHERE event_id = $1 AND status = 'INSCRITO' AND roupa_entregue = 0`, [eventId]);
     return { title: "Participantes que ainda não receberam roupa", columns: ["nome", "congregacao", "telefone", "tamanho_roupa"], rows };
   }
   if (tipo === "sem_tamanho") {
-    const rows = q(`SELECT nome, congregacao, telefone FROM registrations WHERE event_id = $1 AND status = 'INSCRITO' AND (tamanho_roupa IS NULL OR tamanho_roupa = '')`, [eventId]);
+    const rows = await q(`SELECT nome, congregacao, telefone FROM registrations WHERE event_id = $1 AND status = 'INSCRITO' AND (tamanho_roupa IS NULL OR tamanho_roupa = '')`, [eventId]);
     return { title: "Quem ainda não informou o tamanho", columns: ["nome", "congregacao", "telefone"], rows };
   }
   if (tipo === "pagos") {
-    const rows = q(`SELECT r.nome, r.congregacao, p.descricao, p.valor, p.forma, p.pago_em FROM payments p JOIN registrations r ON r.id = p.registration_id WHERE r.event_id = $1 AND p.status = 'PAGO' ORDER BY p.pago_em DESC`, [eventId]);
+    const rows = await q(`SELECT r.nome, r.congregacao, p.descricao, p.valor, p.forma, p.pago_em FROM payments p JOIN registrations r ON r.id = p.registration_id WHERE r.event_id = $1 AND p.status = 'PAGO' ORDER BY p.pago_em DESC`, [eventId]);
     return { title: "Pagamentos concluídos", columns: ["nome", "congregacao", "descricao", "valor", "forma", "pago_em"], rows };
   }
   if (tipo === "presenca") {
-    const rows = q(`SELECT r.nome, r.congregacao, a.data_hora, a.responsavel FROM attendance a JOIN registrations r ON r.id = a.registration_id WHERE r.event_id = $1 ORDER BY a.data_hora`, [eventId]);
+    const rows = await q(`SELECT r.nome, r.congregacao, a.data_hora, a.responsavel FROM attendance a JOIN registrations r ON r.id = a.registration_id WHERE r.event_id = $1 ORDER BY a.data_hora`, [eventId]);
     return { title: "Lista de presença", columns: ["nome", "congregacao", "data_hora", "responsavel"], rows };
   }
   if (tipo === "desistentes") {
-    const rows = q(`SELECT nome, congregacao, telefone FROM registrations WHERE event_id = $1 AND status = 'DESISTENTE'`, [eventId]);
+    const rows = await q(`SELECT nome, congregacao, telefone FROM registrations WHERE event_id = $1 AND status = 'DESISTENTE'`, [eventId]);
     return { title: "Quem desistiu", columns: ["nome", "congregacao", "telefone"], rows };
   }
-  const idades = q<{ idade: number | null }>(`SELECT idade FROM registrations WHERE event_id = $1 AND status = 'INSCRITO'`, [eventId]);
+  const idades = await q<{ idade: number | null }>(`SELECT idade FROM registrations WHERE event_id = $1 AND status = 'INSCRITO'`, [eventId]);
   const faixas = [
     { label: "0-12", min: 0, max: 12 }, { label: "13-17", min: 13, max: 17 }, { label: "18-25", min: 18, max: 25 },
     { label: "26-40", min: 26, max: 40 }, { label: "41-60", min: 41, max: 60 }, { label: "61+", min: 61, max: 999 },
