@@ -1,0 +1,22 @@
+services:
+  gestao-igreja:
+    build: .
+    image: gestao-igreja:latest
+    container_name: gestao-igreja
+    restart: unless-stopped
+    ports:
+      - "8083:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      # cookies HTTPS: desative se acessar por http://
+      COOKIE_SECURE: "false"
+      SQLITE_PATH: /app/data/dashboard.db
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
