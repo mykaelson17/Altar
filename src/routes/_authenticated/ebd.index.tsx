@@ -48,11 +48,12 @@ function Page() {
   const [nome, setNome] = useState("");
   const [query, setQuery] = useState("");
   const [professor, setProfessor] = useState<{ id: string; nome: string } | null>(null);
+  const [profFocused, setProfFocused] = useState(false);
 
   const { data: results = [] } = useQuery({
     queryKey: ["search-professor", query],
     queryFn: () => searchParticipants({ data: { query } }),
-    enabled: query.trim().length >= 2 && !professor,
+    enabled: !professor,
   });
 
   const createMut = useMutation({
@@ -156,8 +157,14 @@ function Page() {
               <div><Label>Nome da turma</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Adultos, Adolescentes..." /></div>
               <div className="relative">
                 <Label>Professor (opcional)</Label>
-                <Input value={query} onChange={(e) => { setQuery(e.target.value); setProfessor(null); }} placeholder="Buscar membro..." />
-                {results.length > 0 && !professor && (
+                <Input 
+                  value={query} 
+                  onChange={(e) => { setQuery(e.target.value); setProfessor(null); }} 
+                  onFocus={() => setProfFocused(true)}
+                  onBlur={() => setTimeout(() => setProfFocused(false), 200)}
+                  placeholder="Buscar membro..." 
+                />
+                {results.length > 0 && !professor && profFocused && (
                   <div className="absolute z-10 mt-1 w-full border rounded-md divide-y max-h-48 overflow-y-auto bg-card shadow-md">
                     {results.map((p: any) => (
                       <button key={p.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent" onClick={() => { setProfessor(p); setQuery(p.nome); }}>

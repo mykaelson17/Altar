@@ -11,14 +11,23 @@ import { requireAuth } from "./auth-middleware";
 // ---------------------------------------------------------------------------
 export const searchParticipants = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .inputValidator((d: unknown) => z.object({ query: z.string().trim().min(2) }).parse(d))
+  .inputValidator((d: unknown) => z.object({ query: z.string().trim().optional() }).parse(d))
   .handler(async ({ data }) => {
+    if (data.query && data.query.length >= 2) {
+      return await q(
+        `SELECT id, nome, email, telefone, congregacao, departamento, foto_url, data_nascimento, sexo, cargo
+           FROM participants
+          WHERE nome LIKE $1 OR email LIKE $1
+          ORDER BY nome LIMIT 15`,
+        [`%${data.query}%`],
+      );
+    }
+    
     return await q(
       `SELECT id, nome, email, telefone, congregacao, departamento, foto_url, data_nascimento, sexo, cargo
          FROM participants
-        WHERE nome LIKE $1 OR email LIKE $1
-        ORDER BY nome LIMIT 15`,
-      [`%${data.query}%`],
+        WHERE cargo IS NOT NULL AND cargo != '' AND cargo COLLATE NOCASE != 'Membro'
+        ORDER BY nome LIMIT 50`
     );
   });
 

@@ -269,11 +269,12 @@ function TurmaHeader({ turma, onSaved, ano, setAno, trimestre, setTrimestre }: {
   const [nome, setNome] = useState(turma.nome);
   const [query, setQuery] = useState(turma.professor_nome ?? "");
   const [professorId, setProfessorId] = useState<string | null>(turma.professor_id ?? null);
+  const [profFocused, setProfFocused] = useState(false);
 
   const { data: results = [] } = useQuery({
     queryKey: ["search-professor-edit", query],
     queryFn: () => searchParticipants({ data: { query } }),
-    enabled: editando && query.trim().length >= 2,
+    enabled: editando,
   });
 
   const salvarMut = useMutation({
@@ -332,8 +333,14 @@ function TurmaHeader({ turma, onSaved, ano, setAno, trimestre, setTrimestre }: {
         <div><Label className="text-xs">Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
         <div className="relative">
           <Label className="text-xs">Professor</Label>
-          <Input value={query} onChange={(e) => { setQuery(e.target.value); setProfessorId(null); }} placeholder="Buscar membro..." />
-          {results.length > 0 && (
+          <Input 
+            value={query} 
+            onChange={(e) => { setQuery(e.target.value); setProfessorId(null); }} 
+            onFocus={() => setProfFocused(true)}
+            onBlur={() => setTimeout(() => setProfFocused(false), 200)}
+            placeholder="Buscar membro..." 
+          />
+          {results.length > 0 && profFocused && (
             <div className="absolute z-10 mt-1 w-full border rounded-md divide-y max-h-48 overflow-y-auto bg-card shadow-md">
               {results.map((p: any) => (
                 <button key={p.id} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-accent" onClick={() => { setProfessorId(p.id); setQuery(p.nome); }}>
