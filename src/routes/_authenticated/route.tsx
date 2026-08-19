@@ -61,7 +61,7 @@ function AuthLayout() {
     { to: "/eventos", label: "Congressos e Eventos", icon: CalendarDays, show: true },
     { to: "/congregacoes", label: "Congregações", icon: Building2, show: isAdmin },
     { to: "/usuarios", label: "Usuários", icon: UserCog, show: isAdmin },
-    { to: "/cadastros", label: "Cadastros", icon: Database, show: isAdmin },
+    { to: "/cadastros", label: "Cadastros", icon: Database, show: isAdmin || user.role === "coordenador" },
     { to: "/avisos", label: "Avisos", icon: Megaphone, show: isAdmin },
     { to: "/documentos", label: "Documentos", icon: FileText, show: true },
   ].filter((i) => i.show);

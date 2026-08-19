@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/cadastros")({
 function Page() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const canManage = ["master", "admin"].includes(user?.role ?? "");
+  const canManage = ["master", "admin", "coordenador"].includes(user?.role ?? "");
 
   const { data: cargos = [], isLoading: loadingCargos } = useQuery({ queryKey: ["cargos"], queryFn: () => listCargos() });
   const { data: departamentos = [], isLoading: loadingDepts } = useQuery({ queryKey: ["departamentos"], queryFn: () => listDepartamentos() });

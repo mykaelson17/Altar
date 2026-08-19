@@ -36,7 +36,8 @@ function Page() {
   const { isAdmin, canEditFinance } = useAuth();
   const qc = useQueryClient();
   const now = new Date();
-  const [ano] = useState(now.getFullYear());
+  const [ano, setAno] = useState(now.getFullYear());
+  const [mes, setMes] = useState("__todos"); // "__todos" ou "1" a "12"
   const [showForm, setShowForm] = useState(false);
   const [tipo, setTipo] = useState<"ENTRADA" | "SAIDA">("ENTRADA");
   const [categoria, setCategoria] = useState("DIZIMO");
@@ -73,6 +74,7 @@ function Page() {
   const { data: planoContas = [] } = useQuery({ queryKey: ["plano-contas"], queryFn: () => listPlanoContas() });
   const [escopo, setEscopo] = useState("__todos");
   const escopoParam = escopo === "__todos" ? undefined : escopo;
+  const mesParam = mes === "__todos" ? undefined : Number(mes);
   const [exportando, setExportando] = useState(false);
 
   async function handleExportar() {
@@ -92,7 +94,7 @@ function Page() {
     }
   }
 
-  const { data: transactions = [] } = useQuery({ queryKey: ["transactions", escopoParam], queryFn: () => listTransactions({ data: { congregation_id: escopoParam } }) });
+  const { data: transactions = [] } = useQuery({ queryKey: ["transactions", escopoParam, ano, mesParam], queryFn: () => listTransactions({ data: { congregation_id: escopoParam, ano, mes: mesParam } }) });
   const { data: summary } = useQuery({ queryKey: ["finance-summary", ano, escopoParam], queryFn: () => getFinanceSummary({ data: { ano, congregation_id: escopoParam } }) });
   const { data: comparativo } = useQuery({ queryKey: ["comparativo-anual", escopoParam], queryFn: () => getComparativoAnual({ data: { congregation_id: escopoParam } }) });
   const { data: diario = [] } = useQuery({ queryKey: ["finance-daily", escopoParam], queryFn: () => getFinanceDaily({ data: { dias: 30, congregation_id: escopoParam } }) });
@@ -168,7 +170,20 @@ function Page() {
           <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Entradas, saídas e prestação de contas.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={mes} onValueChange={setMes}>
+            <SelectTrigger className="w-[140px]"><Filter className="size-3.5 mr-1.5 opacity-60" /><SelectValue placeholder="Mês" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__todos">Ano Inteiro</SelectItem>
+              {MESES_ABREV.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+            <SelectTrigger className="w-[100px]"><SelectValue placeholder="Ano" /></SelectTrigger>
+            <SelectContent>
+              {[now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
           {isAdmin && (
             <Select value={escopo} onValueChange={setEscopo}>
               <SelectTrigger className="w-[200px]"><Filter className="size-3.5 mr-1.5 opacity-60" /><SelectValue /></SelectTrigger>

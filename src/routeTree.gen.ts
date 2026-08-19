@@ -24,6 +24,9 @@ import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLicencaRouteImport } from './routes/_authenticated/licenca'
 import { Route as AuthenticatedPrestarContasRouteImport } from './routes/_authenticated/prestar-contas'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as InscricaoEventIdRouteImport } from './routes/inscricao.$eventId'
+import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalLoginRouteImport } from './routes/portal.login'
 import { Route as AuthenticatedCultosIndexRouteImport } from './routes/_authenticated/cultos.index'
 import { Route as AuthenticatedCultosIdRouteImport } from './routes/_authenticated/cultos.$id'
 import { Route as AuthenticatedEbdIndexRouteImport } from './routes/_authenticated/ebd.index'
@@ -32,6 +35,7 @@ import { Route as AuthenticatedEventosIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedEventosIdRouteImport } from './routes/_authenticated/eventos.$id'
 import { Route as AuthenticatedMembrosIndexRouteImport } from './routes/_authenticated/membros.index'
 import { Route as AuthenticatedMembrosIdRouteImport } from './routes/_authenticated/membros.$id'
+import { Route as AuthenticatedEventosIdControleRouteImport } from './routes/_authenticated/eventos.$id.controle'
 import { Route as AuthenticatedEventosIdRelatoriosRouteImport } from './routes/_authenticated/eventos.$id.relatorios'
 import { Route as AuthenticatedMembrosIdCarteirinhaRouteImport } from './routes/_authenticated/membros.$id.carteirinha'
 import { Route as AuthenticatedMembrosIdCertificadoRouteImport } from './routes/_authenticated/membros.$id.certificado'
@@ -114,6 +118,21 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const InscricaoEventIdRoute = InscricaoEventIdRouteImport.update({
+  id: '/inscricao/$eventId',
+  path: '/inscricao/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/portal/',
+  path: '/portal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalLoginRoute = PortalLoginRouteImport.update({
+  id: '/portal/login',
+  path: '/portal/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedCultosIndexRoute =
   AuthenticatedCultosIndexRouteImport.update({
     id: '/cultos/',
@@ -157,6 +176,12 @@ const AuthenticatedMembrosIdRoute = AuthenticatedMembrosIdRouteImport.update({
   path: '/membros/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEventosIdControleRoute =
+  AuthenticatedEventosIdControleRouteImport.update({
+    id: '/controle',
+    path: '/controle',
+    getParentRoute: () => AuthenticatedEventosIdRoute,
+  } as any)
 const AuthenticatedEventosIdRelatoriosRoute =
   AuthenticatedEventosIdRelatoriosRouteImport.update({
     id: '/relatorios',
@@ -197,6 +222,9 @@ export interface FileRoutesByFullPath {
   '/licenca': typeof AuthenticatedLicencaRoute
   '/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/inscricao/$eventId': typeof InscricaoEventIdRoute
+  '/portal/login': typeof PortalLoginRoute
+  '/portal/': typeof PortalIndexRoute
   '/cultos/$id': typeof AuthenticatedCultosIdRoute
   '/ebd/$id': typeof AuthenticatedEbdIdRoute
   '/eventos/$id': typeof AuthenticatedEventosIdRouteWithChildren
@@ -205,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/ebd/': typeof AuthenticatedEbdIndexRoute
   '/eventos/': typeof AuthenticatedEventosIndexRoute
   '/membros/': typeof AuthenticatedMembrosIndexRoute
+  '/eventos/$id/controle': typeof AuthenticatedEventosIdControleRoute
   '/eventos/$id/relatorios': typeof AuthenticatedEventosIdRelatoriosRoute
   '/membros/$id/carteirinha': typeof AuthenticatedMembrosIdCarteirinhaRoute
   '/membros/$id/certificado': typeof AuthenticatedMembrosIdCertificadoRoute
@@ -225,6 +254,9 @@ export interface FileRoutesByTo {
   '/licenca': typeof AuthenticatedLicencaRoute
   '/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/inscricao/$eventId': typeof InscricaoEventIdRoute
+  '/portal/login': typeof PortalLoginRoute
+  '/portal': typeof PortalIndexRoute
   '/cultos/$id': typeof AuthenticatedCultosIdRoute
   '/ebd/$id': typeof AuthenticatedEbdIdRoute
   '/eventos/$id': typeof AuthenticatedEventosIdRouteWithChildren
@@ -233,6 +265,7 @@ export interface FileRoutesByTo {
   '/ebd': typeof AuthenticatedEbdIndexRoute
   '/eventos': typeof AuthenticatedEventosIndexRoute
   '/membros': typeof AuthenticatedMembrosIndexRoute
+  '/eventos/$id/controle': typeof AuthenticatedEventosIdControleRoute
   '/eventos/$id/relatorios': typeof AuthenticatedEventosIdRelatoriosRoute
   '/membros/$id/carteirinha': typeof AuthenticatedMembrosIdCarteirinhaRoute
   '/membros/$id/certificado': typeof AuthenticatedMembrosIdCertificadoRoute
@@ -255,6 +288,9 @@ export interface FileRoutesById {
   '/_authenticated/licenca': typeof AuthenticatedLicencaRoute
   '/_authenticated/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/inscricao/$eventId': typeof InscricaoEventIdRoute
+  '/portal/login': typeof PortalLoginRoute
+  '/portal/': typeof PortalIndexRoute
   '/_authenticated/cultos/$id': typeof AuthenticatedCultosIdRoute
   '/_authenticated/ebd/$id': typeof AuthenticatedEbdIdRoute
   '/_authenticated/eventos/$id': typeof AuthenticatedEventosIdRouteWithChildren
@@ -263,6 +299,7 @@ export interface FileRoutesById {
   '/_authenticated/ebd/': typeof AuthenticatedEbdIndexRoute
   '/_authenticated/eventos/': typeof AuthenticatedEventosIndexRoute
   '/_authenticated/membros/': typeof AuthenticatedMembrosIndexRoute
+  '/_authenticated/eventos/$id/controle': typeof AuthenticatedEventosIdControleRoute
   '/_authenticated/eventos/$id/relatorios': typeof AuthenticatedEventosIdRelatoriosRoute
   '/_authenticated/membros/$id/carteirinha': typeof AuthenticatedMembrosIdCarteirinhaRoute
   '/_authenticated/membros/$id/certificado': typeof AuthenticatedMembrosIdCertificadoRoute
@@ -285,6 +322,9 @@ export interface FileRouteTypes {
     | '/licenca'
     | '/prestar-contas'
     | '/usuarios'
+    | '/inscricao/$eventId'
+    | '/portal/login'
+    | '/portal/'
     | '/cultos/$id'
     | '/ebd/$id'
     | '/eventos/$id'
@@ -293,6 +333,7 @@ export interface FileRouteTypes {
     | '/ebd/'
     | '/eventos/'
     | '/membros/'
+    | '/eventos/$id/controle'
     | '/eventos/$id/relatorios'
     | '/membros/$id/carteirinha'
     | '/membros/$id/certificado'
@@ -313,6 +354,9 @@ export interface FileRouteTypes {
     | '/licenca'
     | '/prestar-contas'
     | '/usuarios'
+    | '/inscricao/$eventId'
+    | '/portal/login'
+    | '/portal'
     | '/cultos/$id'
     | '/ebd/$id'
     | '/eventos/$id'
@@ -321,6 +365,7 @@ export interface FileRouteTypes {
     | '/ebd'
     | '/eventos'
     | '/membros'
+    | '/eventos/$id/controle'
     | '/eventos/$id/relatorios'
     | '/membros/$id/carteirinha'
     | '/membros/$id/certificado'
@@ -342,6 +387,9 @@ export interface FileRouteTypes {
     | '/_authenticated/licenca'
     | '/_authenticated/prestar-contas'
     | '/_authenticated/usuarios'
+    | '/inscricao/$eventId'
+    | '/portal/login'
+    | '/portal/'
     | '/_authenticated/cultos/$id'
     | '/_authenticated/ebd/$id'
     | '/_authenticated/eventos/$id'
@@ -350,6 +398,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ebd/'
     | '/_authenticated/eventos/'
     | '/_authenticated/membros/'
+    | '/_authenticated/eventos/$id/controle'
     | '/_authenticated/eventos/$id/relatorios'
     | '/_authenticated/membros/$id/carteirinha'
     | '/_authenticated/membros/$id/certificado'
@@ -361,6 +410,9 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   TrocarSenhaRoute: typeof TrocarSenhaRoute
+  InscricaoEventIdRoute: typeof InscricaoEventIdRoute
+  PortalLoginRoute: typeof PortalLoginRoute
+  PortalIndexRoute: typeof PortalIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -470,6 +522,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/inscricao/$eventId': {
+      id: '/inscricao/$eventId'
+      path: '/inscricao/$eventId'
+      fullPath: '/inscricao/$eventId'
+      preLoaderRoute: typeof InscricaoEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
+      path: '/portal'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/login': {
+      id: '/portal/login'
+      path: '/portal/login'
+      fullPath: '/portal/login'
+      preLoaderRoute: typeof PortalLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/cultos/': {
       id: '/_authenticated/cultos/'
       path: '/cultos'
@@ -526,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembrosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/eventos/$id/controle': {
+      id: '/_authenticated/eventos/$id/controle'
+      path: '/controle'
+      fullPath: '/eventos/$id/controle'
+      preLoaderRoute: typeof AuthenticatedEventosIdControleRouteImport
+      parentRoute: typeof AuthenticatedEventosIdRoute
+    }
     '/_authenticated/eventos/$id/relatorios': {
       id: '/_authenticated/eventos/$id/relatorios'
       path: '/relatorios'
@@ -558,12 +638,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedEventosIdRouteChildren {
+  AuthenticatedEventosIdControleRoute: typeof AuthenticatedEventosIdControleRoute
   AuthenticatedEventosIdRelatoriosRoute: typeof AuthenticatedEventosIdRelatoriosRoute
   AuthenticatedEventosIdInscricaoRegIdRoute: typeof AuthenticatedEventosIdInscricaoRegIdRoute
 }
 
 const AuthenticatedEventosIdRouteChildren: AuthenticatedEventosIdRouteChildren =
   {
+    AuthenticatedEventosIdControleRoute: AuthenticatedEventosIdControleRoute,
     AuthenticatedEventosIdRelatoriosRoute:
       AuthenticatedEventosIdRelatoriosRoute,
     AuthenticatedEventosIdInscricaoRegIdRoute:
@@ -645,6 +727,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   TrocarSenhaRoute: TrocarSenhaRoute,
+  InscricaoEventIdRoute: InscricaoEventIdRoute,
+  PortalLoginRoute: PortalLoginRoute,
+  PortalIndexRoute: PortalIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
