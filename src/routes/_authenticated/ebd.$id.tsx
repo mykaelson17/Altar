@@ -265,7 +265,7 @@ function Page() {
   );
 }
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 function TurmaHeader({ turma, onSaved, ano, setAno, trimestre, setTrimestre }: { turma: any; onSaved: () => void; ano: number; setAno: (a: number) => void; trimestre: number; setTrimestre: (t: number) => void }) {
   const [editando, setEditando] = useState(false);
