@@ -13,9 +13,12 @@ export const createCargo = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ nome: z.string().trim().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    const existing = (await q<{ id: string }>())[0];
-    if (existing) throw new Error("Cargo já cadastrado.");
-    await q(`INSERT INTO cargos (nome) VALUES (?)`, [data.nome]);
+    try {
+      await q("INSERT INTO cargos (nome) VALUES ($1)", [data.nome.trim()]);
+    } catch (e: any) {
+      if (e.message.includes("UNIQUE")) throw new Error("Cargo já cadastrado");
+      throw e;
+    }
     return { success: true };
   });
 
@@ -37,9 +40,12 @@ export const createDepartamento = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ nome: z.string().trim().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    const existing = (await q<{ id: string }>())[0];
-    if (existing) throw new Error("Departamento já cadastrado.");
-    await q(`INSERT INTO departamentos (nome) VALUES (?)`, [data.nome]);
+    try {
+      await q("INSERT INTO departamentos (nome) VALUES ($1)", [data.nome.trim()]);
+    } catch (e: any) {
+      if (e.message.includes("UNIQUE")) throw new Error("Departamento já cadastrado");
+      throw e;
+    }
     return { success: true };
   });
 
@@ -61,9 +67,12 @@ export const createTipoCulto = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d: unknown) => z.object({ nome: z.string().trim().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    const existing = (await q<{ id: string }>())[0];
-    if (existing) throw new Error("Tipo de culto já cadastrado.");
-    await q(`INSERT INTO tipos_culto (nome) VALUES (?)`, [data.nome]);
+    try {
+      await q("INSERT INTO tipos_culto (nome) VALUES ($1)", [data.nome.trim()]);
+    } catch (e: any) {
+      if (e.message.includes("UNIQUE")) throw new Error("Tipo de culto já cadastrado");
+      throw e;
+    }
     return { success: true };
   });
 
