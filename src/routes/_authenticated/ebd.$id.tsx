@@ -232,7 +232,12 @@ function Page() {
         <CardContent className="space-y-3">
           <div className="flex gap-2 items-start">
             <div className="relative flex-1">
-              <Input value={query} onChange={(e) => { setQuery(e.target.value); setSelected(null); }} placeholder="Buscar membro pra matricular..." />
+              <Input 
+                value={query} 
+                onChange={(e) => { setQuery(e.target.value); setSelected(null); }} 
+                onKeyDown={(e) => { if (e.key === "Enter" && selected) { e.preventDefault(); addMut.mutate(); } }}
+                placeholder="Buscar membro pra matricular..." 
+              />
               {results.length > 0 && !selected && (
                 <div className="absolute z-10 mt-1 w-full border rounded-md divide-y max-h-48 overflow-y-auto bg-card shadow-md">
                   {results.map((p: any) => (
@@ -243,7 +248,7 @@ function Page() {
                 </div>
               )}
             </div>
-            <Button size="icon" className="shrink-0" onClick={() => addMut.mutate()} disabled={!selected || addMut.isPending}>
+            <Button type="button" size="icon" className="shrink-0" onClick={(e) => { e.preventDefault(); if (selected) addMut.mutate(); }} disabled={!selected || addMut.isPending}>
               <Plus className="size-4" />
             </Button>
             <BatchEnrollModal turmaId={id} ano={ano} trimestre={trimestre} onSaved={invalidate} />

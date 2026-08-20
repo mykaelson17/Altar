@@ -53,9 +53,6 @@ function AuthLayout() {
     { to: "/financeiro", label: "Financeiro", icon: Wallet, show: canSeeFinance },
     { to: "/consolidado", label: "Consolidado", icon: LayoutGrid, show: isAdmin },
     
-    { to: "/prestar-contas", label: "Prestar Contas", icon: FileCheck, show: canSeeFinance },
-    
-    
     { to: "/cultos", label: "Cultos e Escalas", icon: Music, show: true },
     { to: "/ebd", label: "EBD", icon: GraduationCap, show: true },
     { to: "/eventos", label: "Congressos e Eventos", icon: CalendarDays, show: true },

@@ -22,7 +22,6 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
 import { Route as AuthenticatedLicencaRouteImport } from './routes/_authenticated/licenca'
-import { Route as AuthenticatedPrestarContasRouteImport } from './routes/_authenticated/prestar-contas'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as InscricaoEventIdRouteImport } from './routes/inscricao.$eventId'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
@@ -107,12 +106,6 @@ const AuthenticatedLicencaRoute = AuthenticatedLicencaRouteImport.update({
   path: '/licenca',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPrestarContasRoute =
-  AuthenticatedPrestarContasRouteImport.update({
-    id: '/prestar-contas',
-    path: '/prestar-contas',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -220,7 +213,6 @@ export interface FileRoutesByFullPath {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/licenca': typeof AuthenticatedLicencaRoute
-  '/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/inscricao/$eventId': typeof InscricaoEventIdRoute
   '/portal/login': typeof PortalLoginRoute
@@ -252,7 +244,6 @@ export interface FileRoutesByTo {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
   '/licenca': typeof AuthenticatedLicencaRoute
-  '/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/inscricao/$eventId': typeof InscricaoEventIdRoute
   '/portal/login': typeof PortalLoginRoute
@@ -286,7 +277,6 @@ export interface FileRoutesById {
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
   '/_authenticated/licenca': typeof AuthenticatedLicencaRoute
-  '/_authenticated/prestar-contas': typeof AuthenticatedPrestarContasRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/inscricao/$eventId': typeof InscricaoEventIdRoute
   '/portal/login': typeof PortalLoginRoute
@@ -320,7 +310,6 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/financeiro'
     | '/licenca'
-    | '/prestar-contas'
     | '/usuarios'
     | '/inscricao/$eventId'
     | '/portal/login'
@@ -352,7 +341,6 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/financeiro'
     | '/licenca'
-    | '/prestar-contas'
     | '/usuarios'
     | '/inscricao/$eventId'
     | '/portal/login'
@@ -385,7 +373,6 @@ export interface FileRouteTypes {
     | '/_authenticated/documentos'
     | '/_authenticated/financeiro'
     | '/_authenticated/licenca'
-    | '/_authenticated/prestar-contas'
     | '/_authenticated/usuarios'
     | '/inscricao/$eventId'
     | '/portal/login'
@@ -506,13 +493,6 @@ declare module '@tanstack/react-router' {
       path: '/licenca'
       fullPath: '/licenca'
       preLoaderRoute: typeof AuthenticatedLicencaRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/prestar-contas': {
-      id: '/_authenticated/prestar-contas'
-      path: '/prestar-contas'
-      fullPath: '/prestar-contas'
-      preLoaderRoute: typeof AuthenticatedPrestarContasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/usuarios': {
@@ -685,7 +665,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
   AuthenticatedLicencaRoute: typeof AuthenticatedLicencaRoute
-  AuthenticatedPrestarContasRoute: typeof AuthenticatedPrestarContasRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedCultosIdRoute: typeof AuthenticatedCultosIdRoute
   AuthenticatedEbdIdRoute: typeof AuthenticatedEbdIdRoute
@@ -707,7 +686,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
   AuthenticatedLicencaRoute: AuthenticatedLicencaRoute,
-  AuthenticatedPrestarContasRoute: AuthenticatedPrestarContasRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedCultosIdRoute: AuthenticatedCultosIdRoute,
   AuthenticatedEbdIdRoute: AuthenticatedEbdIdRoute,
