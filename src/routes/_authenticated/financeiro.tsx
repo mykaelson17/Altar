@@ -32,11 +32,14 @@ const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Se
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const PALETTE = ["#2563eb", "#22c55e", "#f59e0b", "#a855f7", "#ec4899", "#14b8a6", "#ef4444", "#6366f1"];
 
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function fmtBRL(v: number | undefined | null) {
+  if (v === undefined || v === null) return "R$ 0,00";
+  return Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+
 function Page() {
+
   const { isAdmin } = useAuth();
   return (
     <div className="space-y-6 pb-10">
@@ -241,14 +244,14 @@ const { canEditFinance } = useAuth();
   // Dados prontos pros gráficos.
   const dadosPorMes = MESES_ABREV.map((label, i) => {
     const mm = String(i + 1).padStart(2, "0");
-    const entrada = summary?.porMes.find((r) => r.mes === mm && r.tipo === "ENTRADA")?.total ?? 0;
-    const saida = summary?.porMes.find((r) => r.mes === mm && r.tipo === "SAIDA")?.total ?? 0;
+    const entrada = summary?.porMes?.find((r: any) => r.mes === mm && r.tipo === "ENTRADA")?.total ?? 0;
+    const saida = summary?.porMes?.find((r: any) => r.mes === mm && r.tipo === "SAIDA")?.total ?? 0;
     return { mes: label, Entradas: entrada, Saídas: saida };
   });
   const dadosPorCategoria = (summary?.porCategoria ?? [])
-    .filter((r) => r.tipo === "ENTRADA")
+    .filter((r: any) => r.tipo === "ENTRADA")
     .slice(0, 8)
-    .map((r) => ({ name: r.categoria, value: r.total }));
+    .map((r: any) => ({ name: r.categoria, value: r.total }));
 
   const anosComparativo = [...new Set((comparativo ?? []).map((r: any) => r.ano))].sort();
   const dadosComparativo = anosComparativo.map((anoStr) => ({
