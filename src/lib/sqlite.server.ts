@@ -281,6 +281,17 @@ CREATE TABLE IF NOT EXISTS transferencias (
 -- Auditoria — rastro de eventos financeiros importantes (quem fez o quê,
 -- quando). Não é um log técnico, é o "histórico" que a sede/congregação
 -- consultam pra entender o que aconteceu com um lançamento ou prestação.
+
+CREATE TABLE IF NOT EXISTS financeiro_aberturas (
+  id              TEXT PRIMARY KEY,
+  congregation_id TEXT NOT NULL REFERENCES congregations(id) ON DELETE CASCADE,
+  mes             INTEGER NOT NULL,
+  ano             INTEGER NOT NULL,
+  data_limite     TEXT NOT NULL,
+  concedido_por   TEXT REFERENCES app_users(id) ON DELETE SET NULL,
+  criado_em       TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS financeiro_auditoria (
   id             TEXT PRIMARY KEY,
   tipo_entidade  TEXT NOT NULL CHECK (tipo_entidade IN ('LANCAMENTO','PRESTACAO','TRANSFERENCIA')),

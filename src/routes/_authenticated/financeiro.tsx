@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, Paperclip, Eye, Loader2, Pencil, Filter, FileDown, FileCheck, Send, AlertTriangle, Megaphone, Clock, CheckCircle2, XCircle, History } from "lucide-react";
+import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, Paperclip, Eye, Loader2, Pencil, Filter, FileDown, FileCheck, Send, AlertTriangle, Megaphone, Clock, CheckCircle2, XCircle, History, Unlock, LockOpen, Lock, ShieldAlert } from "lucide-react";
 import { listTransactions, addTransaction, updateTransaction, deleteTransaction, getFinanceSummary, getComparativoAnual, getFinanceDaily, exportFinanceiroExcel, getPendingAccountability, sendAccountability, listAccountabilityReports, getAccountabilityDetail, getPrestacaoStatusResumo, moverPrestacaoParaAnalise, aprovarPrestacao, marcarPrestacaoPendencia } from "@/lib/finance.functions";
 import { createAviso } from "@/lib/avisos.functions";
 import { listPlanoContas } from "@/lib/plano-contas.functions";
@@ -44,6 +44,110 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean; error: any
     return this.props.children; 
   }
 }
+
+
+function SedeAberturaView() {
+  const qc = useQueryClient();
+  const now = new Date();
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [ano, setAno] = useState(now.getFullYear());
+  const [cong, setCong] = useState("");
+
+  const { data: congs = [] } = useQuery({ queryKey: ["congregations"], queryFn: () => listCongregations() });
+  const { data: abertas = [] } = useQuery({ queryKey: ["open-periods"], queryFn: () => listOpenPeriods() });
+
+  const openMut = useMutation({
+    mutationFn: () => openPeriod({ data: { congregation_id: cong, mes, ano } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["open-periods"] });
+      toast.success("Período reaberto por 24 horas.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const closeMut = useMutation({
+    mutationFn: (id: string) => closePeriod({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["open-periods"] });
+      toast.success("Período fechado manualmente.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Unlock className="size-5 text-amber-500" /> Nova Abertura de Exceção
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Quando um mês tem as contas aprovadas, ele é trancado. Use este painel para reabrir temporariamente (24h) 
+            um mês específico para que a congregação possa fazer edições.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1 flex-1 min-w-[200px]">
+              <Label className="text-xs">Congregação</Label>
+              <Select value={cong} onValueChange={setCong}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {congs.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Mês</Label>
+              <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+                <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ano</Label>
+              <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+                <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button disabled={!cong || openMut.isPending} onClick={() => openMut.mutate()}>
+              <LockOpen className="size-4 mr-2" /> Liberar Acesso
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Períodos Abertos Atualmente</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {abertas.map((a: any) => (
+              <div key={a.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 border rounded-md">
+                <div>
+                  <div className="font-semibold">{a.congregation_nome}</div>
+                  <div className="text-sm text-muted-foreground">Mês: {MESES[a.mes - 1]}/{a.ano}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Concedido por: {a.concedido_por_nome || "Desconhecido"} • Expira em: {new Date(a.data_limite + "Z").toLocaleString("pt-BR")}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => closeMut.mutate(a.id)} disabled={closeMut.isPending}>
+                  <Lock className="size-4 mr-2" /> Fechar agora
+                </Button>
+              </div>
+            ))}
+            {abertas.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhum período está aberto como exceção no momento.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 
 export const Route = createFileRoute("/_authenticated/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro" }] }),
@@ -78,6 +182,7 @@ function Page() {
         <TabsList>
           <TabsTrigger value="lancamentos">{isAdmin ? "Caixa Sede (Lançamentos)" : "Lançamentos da Congregação"}</TabsTrigger>
           <TabsTrigger value="prestacoes">Prestação de Contas</TabsTrigger>
+          {isAdmin && <TabsTrigger value="aberturas">Abertura de Período</TabsTrigger>}
         </TabsList>
         <TabsContent value="lancamentos" className="space-y-6 outline-none">
           <LancamentosView isSede={isAdmin} />
@@ -85,6 +190,11 @@ function Page() {
         <TabsContent value="prestacoes" className="space-y-6 outline-none">
           {isAdmin ? <SedePrestacaoView /> : <CongregacaoPrestacaoView />}
         </TabsContent>
+        {isAdmin && (
+          <TabsContent value="aberturas" className="space-y-6 outline-none">
+            <SedeAberturaView />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -154,6 +264,20 @@ const { canEditFinance } = useAuth();
 
   const { data: transactions = [] } = useQuery({ queryKey: ["transactions", escopoParam, ano, mesParam], queryFn: () => listTransactions({ data: { congregation_id: escopoParam, ano, mes: mesParam } }) });
   const { data: summary } = useQuery({ queryKey: ["finance-summary", ano, escopoParam], queryFn: () => getFinanceSummary({ data: { ano, congregation_id: escopoParam } }) });
+    
+  const { data: accountability } = useQuery({
+    queryKey: ["pending-accountability", mes, ano],
+    queryFn: () => getPendingAccountability({ data: { mes: Number(mes), ano } }),
+    enabled: mes !== "__todos"
+  });
+  const isFechado = accountability?.isFechado ?? false;
+
+  const reqAberturaMut = useMutation({
+    mutationFn: () => requestPeriodOpening({ data: { mes: Number(mes), ano } }),
+    onSuccess: () => toast.success("Solicitação enviada para a Sede!"),
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const { data: comparativo } = useQuery({ queryKey: ["comparativo-anual", escopoParam], queryFn: () => getComparativoAnual({ data: { congregation_id: escopoParam } }) });
   const { data: diario = [] } = useQuery({ queryKey: ["finance-daily", escopoParam], queryFn: () => getFinanceDaily({ data: { dias: 30, congregation_id: escopoParam } }) });
 
@@ -465,7 +589,7 @@ const { canEditFinance } = useAuth();
         <CardHeader><CardTitle className="text-base">Lançamentos recentes</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {transactions.slice(0, 50).map((t: any) => (
-            <TransactionRow key={t.id} t={t} canEditFinance={canEditFinance} qc={qc} />
+            <TransactionRow key={t.id} t={t} canEditFinance={canEditFinance && !isFechado} qc={qc} />
           ))}
           {transactions.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum lançamento ainda.</p>}
         </CardContent>

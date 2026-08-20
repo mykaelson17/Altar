@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import ExcelJS from "exceljs";
 import { q, q1 } from "./db.server";
+import { randomUUID } from "crypto";
 import { requireFinance, requireFinanceEdit, requireAdmin } from "./auth-middleware";
 
 export type FinanceTransaction = {
@@ -116,6 +117,10 @@ export const addTransaction = createServerFn({ method: "POST" })
     const scoped = scopeCongregation(context.auth);
     const congregationId = scoped ?? data.congregation_id ?? null;
 
+    const [anoStr, mesStr] = data.data.split("-");
+    const isFechado = await isPeriodoFechado(congregationId!, Number(mesStr), Number(anoStr));
+    if (isFechado) throw new Error("Esse mês contábil já foi fechado/enviado para a Sede e não pode receber novos lançamentos.");
+
     const row = await q1<{ id: string }>(
       `INSERT INTO finance_transactions (congregation_id, tipo, categoria, valor, data, forma_pagamento, descricao, lancado_por)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
@@ -137,7 +142,9 @@ export const deleteTransaction = createServerFn({ method: "POST" })
     if (!tx) return { ok: true };
     const scoped = scopeCongregation(context.auth);
     if (scoped && tx.congregation_id !== scoped) throw new Error("Esse lançamento não pertence à sua congregação.");
-    if (tx.prestacao_conta_id) throw new Error("Esse lançamento já foi enviado numa prestação de contas — não pode mais ser removido.");
+    const [anoStr, mesStr] = tx.data.split("-");
+    const isFechado = await isPeriodoFechado(tx.congregation_id, Number(mesStr), Number(anoStr));
+    if (isFechado) throw new Error("Esse mês contábil já foi fechado e o lançamento não pode ser removido. Solicite a abertura à Sede.");
     await q1(`DELETE FROM finance_transactions WHERE id = $1`, [data.id]);
     await registrarAuditoria({
       tipoEntidade: "LANCAMENTO", entidadeId: data.id, congregationId: tx.congregation_id, userId: context.auth.userId,
@@ -167,7 +174,9 @@ export const updateTransaction = createServerFn({ method: "POST" })
     if (!tx) throw new Error("Lançamento não encontrado.");
     const scoped = scopeCongregation(context.auth);
     if (scoped && tx.congregation_id !== scoped) throw new Error("Esse lançamento não pertence à sua congregação.");
-    if (tx.prestacao_conta_id) throw new Error("Esse lançamento já foi enviado numa prestação de contas — não pode mais ser alterado.");
+    const [anoStr, mesStr] = tx.data.split("-");
+    const isFechado = await isPeriodoFechado(tx.congregation_id, Number(mesStr), Number(anoStr));
+    if (isFechado) throw new Error("Esse mês contábil já foi fechado e não pode ser editado. Solicite a abertura à Sede.");
 
     const sets: string[] = [];
     const vals: any[] = [];
@@ -205,6 +214,89 @@ export const getFinanceDaily = createServerFn({ method: "GET" })
         WHERE data >= date('now', '-' || $1 || ' days') ${cond}
         GROUP BY data, tipo ORDER BY data`,
       vals,
+    );
+  });
+
+
+async function isPeriodoFechado(congregation_id: string, mes: number, ano: number): Promise<boolean> {
+  // Se não existir prestação de contas no período para a congregação, está aberto
+  const prest = await q1(
+    `SELECT status FROM prestacoes_contas WHERE congregation_id = $1 AND mes = $2 AND ano = $3`,
+    [congregation_id, mes, ano]
+  );
+  if (!prest) return false; // Nenhuma prestação enviada, aberto
+  if (prest.status === 'PENDENCIA') return false; // Sede mandou para correção, aberto
+
+  // Se existir (ENVIADA, EM_ANALISE, APROVADA, ENCERRADA), está FECHADO.
+  // Verifica se a Sede concedeu uma exceção de abertura na tabela financeiro_aberturas.
+  const abertura = await q1(
+    `SELECT id FROM financeiro_aberturas 
+     WHERE congregation_id = $1 AND mes = $2 AND ano = $3 AND data_limite > datetime('now')`,
+    [congregation_id, mes, ano]
+  );
+  if (abertura) return false; // Existe exceção aberta e não expirou, então aberto
+  
+  return true; // Fechado
+}
+
+export const requestPeriodOpening = createServerFn({ method: "POST" })
+  .middleware([requireFinanceEdit])
+  .inputValidator((d: unknown) => z.object({ mes: z.number(), ano: z.number() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const scoped = scopeCongregation(context.auth);
+    if (!scoped) throw new Error("Apenas congregações podem solicitar abertura.");
+    
+    // Cria um aviso para a sede
+    const dtFormatada = `${data.mes.toString().padStart(2, "0")}/${data.ano}`;
+    await q1(
+      `INSERT INTO avisos (id, titulo, mensagem, author_id, congregation_id, visualizacao)
+       VALUES ($1, $2, $3, $4, NULL, 'SEDE')`,
+      [
+        randomUUID(), 
+        `Solicitação de Abertura Contábil: ${dtFormatada}`, 
+        `A congregação de ID ${scoped} solicitou a abertura do período ${dtFormatada} para inserir/editar lançamentos.`,
+        context.auth.userId
+      ]
+    );
+    return { ok: true };
+  });
+
+export const openPeriod = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .inputValidator((d: unknown) => z.object({ congregation_id: z.string(), mes: z.number(), ano: z.number() }).parse(d))
+  .handler(async ({ data, context }) => {
+    // Apaga aberturas antigas se existirem
+    await q1(
+      `DELETE FROM financeiro_aberturas WHERE congregation_id = $1 AND mes = $2 AND ano = $3`,
+      [data.congregation_id, data.mes, data.ano]
+    );
+    // Cria nova abertura por 24 horas
+    await q1(
+      `INSERT INTO financeiro_aberturas (id, congregation_id, mes, ano, data_limite, concedido_por)
+       VALUES ($1, $2, $3, $4, datetime('now', '+1 day'), $5)`,
+      [randomUUID(), data.congregation_id, data.mes, data.ano, context.auth.userId]
+    );
+    return { ok: true };
+  });
+
+export const closePeriod = createServerFn({ method: "POST" })
+  .middleware([requireAdmin])
+  .inputValidator((d: unknown) => z.object({ id: z.string() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await q1(`DELETE FROM financeiro_aberturas WHERE id = $1`, [data.id]);
+    return { ok: true };
+  });
+
+export const listOpenPeriods = createServerFn({ method: "GET" })
+  .middleware([requireAdmin])
+  .handler(async () => {
+    return await q(
+      `SELECT a.*, c.nome as congregation_nome, u.username as concedido_por_nome 
+       FROM financeiro_aberturas a
+       JOIN congregations c ON a.congregation_id = c.id
+       LEFT JOIN app_users u ON a.concedido_por = u.id
+       WHERE a.data_limite > datetime('now')
+       ORDER BY a.criado_em DESC`
     );
   });
 
@@ -365,18 +457,29 @@ export const getPendingAccountability = createServerFn({ method: "GET" })
         ORDER BY data`,
       [congId, `${data.ano}-${mm}`],
     );
-    const pendentesCount = rows.filter((r) => r.prestacao_conta_id === null).length;
     const totalEntradas = rows.filter((r) => r.tipo === "ENTRADA").reduce((s, r) => s + r.valor, 0);
     const totalSaidas = rows.filter((r) => r.tipo === "SAIDA").reduce((s, r) => s + r.valor, 0);
 
+    const pastRows = await q<FinanceTransaction>(
+      `SELECT * FROM finance_transactions
+        WHERE congregation_id = $1 AND strftime('%Y-%m', data) < $2 AND prestacao_conta_id IS NULL
+        ORDER BY data DESC`,
+      [congId, `${data.ano}-${mm}`]
+    );
+
+    const scoped = congId;
     return { 
       transactions: rows, 
+      pastDueTransactions: pastRows,
       totalEntradas, 
       totalSaidas, 
       saldo: totalEntradas - totalSaidas,
       prestacaoStatus: prestacao?.status || null,
       observacoesSede: prestacao?.observacoes_sede || null,
-      pendentesCount
+      pendentesCount: rows.filter((r) => r.prestacao_conta_id === null).length,
+      isFechado: prestacao && prestacao.status !== 'PENDENCIA' 
+        ? !(await q1(`SELECT id FROM financeiro_aberturas WHERE congregation_id = $1 AND mes = $2 AND ano = $3 AND data_limite > datetime('now')`, [scoped, data.mes, data.ano]))
+        : false,
     };
   });
 
