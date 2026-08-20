@@ -61,7 +61,6 @@ function fmtBRL(v: number | undefined | null) {
 
 
 function Page() {
-
   const { isAdmin } = useAuth();
   return (
     <div className="space-y-6 pb-10">
@@ -75,90 +74,19 @@ function Page() {
         </div>
       </header>
       
-      {isAdmin ? (
-        <Tabs defaultValue="lancamentos" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="lancamentos">Caixa Sede (Lançamentos)</TabsTrigger>
-            <TabsTrigger value="prestacoes">Prestações das Congregações</TabsTrigger>
-          </TabsList>
-          <TabsContent value="lancamentos" className="space-y-6 outline-none">
-            <LancamentosView isSede={true} />
-          </TabsContent>
-          <TabsContent value="prestacoes" className="space-y-6 outline-none">
-            <SedePrestacaoView />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <LancamentosView isSede={false} />
-      )}
+      <Tabs defaultValue="lancamentos" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="lancamentos">{isAdmin ? "Caixa Sede (Lançamentos)" : "Lançamentos da Congregação"}</TabsTrigger>
+          <TabsTrigger value="prestacoes">Prestação de Contas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="lancamentos" className="space-y-6 outline-none">
+          <LancamentosView isSede={isAdmin} />
+        </TabsContent>
+        <TabsContent value="prestacoes" className="space-y-6 outline-none">
+          {isAdmin ? <SedePrestacaoView /> : <CongregacaoPrestacaoView />}
+        </TabsContent>
+      </Tabs>
     </div>
-  );
-}
-
-function PrestacaoStatusBanner({ mes, ano }: { mes: number, ano: number }) {
-  const qc = useQueryClient();
-  const { canEditFinance } = useAuth();
-  const { data } = useQuery({
-    queryKey: ["pending-accountability", mes, ano],
-    queryFn: () => getPendingAccountability({ data: { mes, ano } }),
-  });
-
-  const sendMut = useMutation({
-    mutationFn: () => sendAccountability({ data: { mes, ano } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pending-accountability"] });
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["pastor-dashboard"] });
-      toast.success("Prestação de contas enviada pra sede!");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  if (!data) return null;
-
-  return (
-    <Card className="mb-4 bg-muted/20">
-      <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold">{data.prestacaoStatus ? `Prestação de Contas — ${MESES[mes - 1]}/${ano}` : `Pendente de envio — ${MESES[mes - 1]}/${ano}`}</h3>
-            {data.prestacaoStatus && (
-              <Badge 
-                variant={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "default" : data.prestacaoStatus === "PENDENCIA" ? "destructive" : "secondary"}
-                className={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-              >
-                {data.prestacaoStatus === "PENDENCIA" ? "Aguardando Correção" : data.prestacaoStatus === "APROVADA" ? "Contas Fechadas" : data.prestacaoStatus.replace("_", " ")}
-              </Badge>
-            )}
-          </div>
-          {data.prestacaoStatus === "PENDENCIA" && data.observacoesSede && (
-            <p className="text-sm text-red-700 mt-1 flex items-start gap-1">
-              <AlertTriangle className="size-4 mt-0.5 shrink-0" />
-              <span><strong>Correção solicitada:</strong> {data.observacoesSede}</span>
-            </p>
-          )}
-          {!data.prestacaoStatus && data.pendentesCount > 0 && (
-             <p className="text-sm text-muted-foreground">Existem lançamentos não enviados neste mês.</p>
-          )}
-        </div>
-        
-        {data.pendentesCount > 0 && (
-          canEditFinance ? (
-            <Button
-              onClick={() => { if (confirm(`Enviar ${data.pendentesCount} lançamento(s) pendente(s) pra sede? Depois de enviados, eles não podem mais ser editados ou removidos.`)) sendMut.mutate(); }}
-              disabled={sendMut.isPending}
-            >
-              <Send className="size-4 mr-2" /> 
-              {data.prestacaoStatus ? `Enviar ${data.pendentesCount} lançamentos novos` : "Enviar prestação de contas"}
-            </Button>
-          ) : (
-            <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-              Só um coordenador pode enviar a prestação de contas pra sede.
-            </p>
-          )
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -326,9 +254,7 @@ const { canEditFinance } = useAuth();
       <Button onClick={() => setShowForm((v) => !v)}><Plus className="size-4 mr-2" /> Novo lançamento</Button>
     </div>
   </div>
-  {!isAdmin && mes !== "__todos" && (
-    <PrestacaoStatusBanner mes={Number(mes)} ano={ano} />
-  )}
+  
 
       {summary && (
         <div className="grid gap-4 grid-cols-3">
@@ -1214,6 +1140,112 @@ function PrestacaoAcoes({ prestacao }: { prestacao: any }) {
             Enviar pendência
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+
+function CongregacaoPrestacaoView() {
+  const { canEditFinance } = useAuth();
+  const qc = useQueryClient();
+  const now = new Date();
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [ano, setAno] = useState(now.getFullYear());
+
+  const { data } = useQuery({
+    queryKey: ["pending-accountability", mes, ano],
+    queryFn: () => getPendingAccountability({ data: { mes, ano } }),
+  });
+
+  const sendMut = useMutation({
+    mutationFn: () => sendAccountability({ data: { mes, ano } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pending-accountability"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Prestação de contas enviada pra sede!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-3">
+        <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
+        </Select>
+        <Select value={String(ano)} onValueChange={(v) => setAno(Number(v))}>
+          <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {data && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
+              <span>{data.prestacaoStatus ? `Prestação de Contas — ${MESES[mes - 1]}/${ano}` : `Pendente de envio — ${MESES[mes - 1]}/${ano}`}</span>
+              {data.prestacaoStatus && (
+                <Badge 
+                  variant={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "default" : data.prestacaoStatus === "PENDENCIA" ? "destructive" : "secondary"}
+                  className={data.prestacaoStatus === "APROVADA" || data.prestacaoStatus === "ENCERRADA" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                >
+                  {data.prestacaoStatus === "PENDENCIA" ? "Aguardando Correção" : data.prestacaoStatus === "APROVADA" ? "Contas Fechadas" : data.prestacaoStatus.replace("_", " ")}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.prestacaoStatus === "PENDENCIA" && data.observacoesSede && (
+              <div className="p-3 bg-red-50 text-red-700 rounded-md border border-red-200 text-sm flex items-start gap-2">
+                <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                <div>
+                  <strong>Correção solicitada pela sede:</strong> {data.observacoesSede}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div><div className="text-xs text-muted-foreground">Entradas</div><div className="text-lg font-semibold text-green-600">{fmtBRL(data.totalEntradas)}</div></div>
+              <div><div className="text-xs text-muted-foreground">Saídas</div><div className="text-lg font-semibold text-red-600">{fmtBRL(data.totalSaidas)}</div></div>
+              <div><div className="text-xs text-muted-foreground">Saldo</div><div className="text-lg font-semibold">{fmtBRL(data.saldo)}</div></div>
+            </div>
+
+            <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-2">
+              {data.transactions.map((t: any) => (
+                <div key={t.id} className="flex justify-between text-sm border-b pb-1">
+                  <span>{t.categoria} {t.descricao && `— ${t.descricao}`}</span>
+                  <span className={t.tipo === "ENTRADA" ? "text-green-600" : "text-red-600"}>
+                    {t.tipo === "ENTRADA" ? "+" : "-"} {fmtBRL(t.valor)}
+                  </span>
+                </div>
+              ))}
+              {data.transactions.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum lançamento registrado nesse período.</p>
+              )}
+            </div>
+
+            {data.pendentesCount > 0 && (
+              canEditFinance ? (
+                <Button
+                  className="w-full"
+                  onClick={() => { if (confirm(`Enviar ${data.pendentesCount} lançamento(s) pendente(s) pra sede? Depois de enviados, eles não podem mais ser removidos.`)) sendMut.mutate(); }}
+                  disabled={sendMut.isPending}
+                >
+                  <Send className="size-4 mr-2" /> 
+                  {data.prestacaoStatus ? `Enviar ${data.pendentesCount} lançamentos pendentes/novos` : "Enviar prestação de contas"}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center">
+                  Só um coordenador pode enviar a prestação de contas pra sede.
+                </p>
+              )
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
