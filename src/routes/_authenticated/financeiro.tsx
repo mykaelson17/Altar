@@ -22,10 +22,32 @@ import { listCongregations } from "@/lib/congregations.functions";
 import { suppressAvisos, releaseAvisos } from "@/lib/avisos-gate";
 import { uploadComprovante, getComprovante, removeComprovante } from "@/lib/comprovantes.functions";
 import { useAuth } from "@/hooks/use-auth";
+import React from "react";
+class ErrorBoundary extends React.Component<any, { hasError: boolean; error: any }> {
+  constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
+  render() { 
+    if (this.state.hasError) { 
+      return (
+        <div className="p-8 max-w-2xl mx-auto space-y-4 text-left mt-20">
+          <h1 className="text-2xl text-red-600 font-bold">Oops! Algo deu errado</h1>
+          <p>Ocorreu um erro ao carregar o Financeiro. Tire um print da mensagem abaixo e envie para o desenvolvedor:</p>
+          <pre className="bg-red-50 text-red-900 p-4 text-xs overflow-auto border border-red-200 rounded whitespace-pre-wrap">
+            {this.state.error?.message}
+            {"\n\n"}
+            {this.state.error?.stack}
+          </pre>
+          <Button onClick={() => window.location.reload()}>Tentar Novamente</Button>
+        </div>
+      );
+    } 
+    return this.props.children; 
+  }
+}
 
 export const Route = createFileRoute("/_authenticated/financeiro")({
   head: () => ({ meta: [{ title: "Financeiro" }] }),
-  component: Page,
+  component: () => <ErrorBoundary><Page /></ErrorBoundary>,
 });
 
 const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
