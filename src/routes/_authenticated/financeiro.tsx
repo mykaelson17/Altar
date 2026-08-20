@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Trash2, TrendingUp, TrendingDown, Wallet, Paperclip, Eye, Loader2, Pencil, Filter, FileDown, FileCheck, Send, AlertTriangle, Megaphone, Clock, CheckCircle2, XCircle, History } from "lucide-react";
 import { listTransactions, addTransaction, updateTransaction, deleteTransaction, getFinanceSummary, getComparativoAnual, getFinanceDaily, exportFinanceiroExcel, getPendingAccountability, sendAccountability, listAccountabilityReports, getAccountabilityDetail, getPrestacaoStatusResumo, moverPrestacaoParaAnalise, aprovarPrestacao, marcarPrestacaoPendencia } from "@/lib/finance.functions";
@@ -606,14 +607,16 @@ function ComprovanteButton({ transactionId, hasComprovante }: { transactionId: s
             <div className="space-y-3">
               {viewData.isPdf ? (
                 <a
-                  href={`data:${viewData.mimeType};base64,${viewData.base64}`}
+                  href={viewData.publicUrl}
+                  target="_blank"
+                  rel="noreferrer"
                   download="comprovante.pdf"
                   className="text-sm underline text-primary block text-center py-6"
                 >
                   Abrir/baixar PDF do comprovante
                 </a>
               ) : (
-                <img src={`data:${viewData.mimeType};base64,${viewData.base64}`} alt="Comprovante" className="w-full rounded-md border" />
+                <img src={viewData.publicUrl} alt="Comprovante" className="w-full rounded-md border" />
               )}
               <Button
                 variant="outline" size="sm" className="w-full text-destructive"
@@ -759,6 +762,10 @@ const STATUS_INFO: Record<string, { label: string; emoji: string; className: str
   NAO_ENVIADA: { label: "Não enviada", emoji: "🔴", className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200", hex: "#ef4444" },
 };
 
+function StatusBadge({ status }: { status: string }) {
+  const info = STATUS_INFO[status] ?? STATUS_INFO.NAO_ENVIADA;
+  return <Badge className={info.className}>{info.emoji} {info.label}</Badge>;
+}
 
 function SedePrestacaoView() {
   const { data: reports = [] } = useQuery({ queryKey: ["accountability-reports"], queryFn: () => listAccountabilityReports() });
@@ -1172,7 +1179,12 @@ function PrestacaoAcoes({ prestacao }: { prestacao: any }) {
       {showPendencia && (
         <div className="space-y-2 rounded-md border p-2 bg-amber-50 dark:bg-amber-950/30">
           <Label className="text-xs">O que precisa ser corrigido?</Label>
-          <Input value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Ex.: falta comprovante da despesa de manutenção" />
+          <Textarea 
+            value={observacao} 
+            onChange={(e: any) => setObservacao(e.target.value)} 
+            placeholder="Ex: Faltou o comprovante da conta de luz"
+            className="mb-4"
+          />
           <Button size="sm" onClick={() => pendenciaMut.mutate()} disabled={!observacao.trim() || pendenciaMut.isPending}>
             Enviar pendência
           </Button>
